@@ -13,6 +13,14 @@ def get_feature_store():
     )
     return project.get_feature_store()
 
+def get_model_registry():
+    """Connect to Hopsworks and return the project's model registry handle."""
+    project = hopsworks.login(
+        api_key_value=os.getenv("HOPSWORKS_API_KEY"),
+        project=os.getenv("HOPSWORKS_PROJECT")
+    )
+    return project.get_model_registry()
+
 def get_or_create_feature_group(fs):
     """
     Get the aqi_features feature group if it exists, or create it

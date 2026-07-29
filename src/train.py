@@ -6,8 +6,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
 from tensorflow import keras
-from feature_store import get_feature_store
-
+import joblib
+import os
+from feature_store import get_feature_store, get_model_registry
 
 def load_clean_data():
     """
@@ -146,6 +147,19 @@ def train_neural_network(train_df, test_df, target_col):
     r2 = r2_score(y_test, y_pred)
     return model, rmse, mae, r2
 
+def register_model(model_path, target, rmse, mae, r2):
+    mr = get_model_registry()
+
+    model_name = f"aqi_ridge_{target}"
+    metrics = {"rmse": float(rmse), "mae": float(mae), "r2": float(r2)}
+
+    hw_model = mr.python.create_model(
+        name=model_name,
+        metrics=metrics,
+        description=f"Ridge regression model for {target}"
+    )
+    hw_model.save(model_path)
+    print(f"Registered {model_name} to Hopsworks Model Registry (RMSE={rmse:.2f})")
 
 if __name__ == "__main__":
     df = load_clean_data()
@@ -154,6 +168,7 @@ if __name__ == "__main__":
     print(f"\nTrain: {len(train_df)} rows, Test: {len(test_df)} rows\n")
 
     horizons = ["target_aqi_24h", "target_aqi_48h", "target_aqi_72h"]
+    os.makedirs("models", exist_ok=True)
 
     for target in horizons:
         print(f"--- {target} ---")
@@ -161,7 +176,7 @@ if __name__ == "__main__":
         base_rmse, base_mae, base_r2 = evaluate_baseline(test_df, target)
         print(f"Baseline      -> RMSE: {base_rmse:.2f}  MAE: {base_mae:.2f}  R2: {base_r2:.3f}")
 
-        _, ridge_rmse, ridge_mae, ridge_r2 = train_ridge(train_df, test_df, target)
+        ridge_model, ridge_rmse, ridge_mae, ridge_r2 = train_ridge(train_df, test_df, target)
         print(f"Ridge         -> RMSE: {ridge_rmse:.2f}  MAE: {ridge_mae:.2f}  R2: {ridge_r2:.3f}")
 
         _, rf_rmse, rf_mae, rf_r2 = train_random_forest(train_df, test_df, target)
@@ -169,4 +184,10 @@ if __name__ == "__main__":
 
         _, nn_rmse, nn_mae, nn_r2 = train_neural_network(train_df, test_df, target)
         print(f"Neural Net    -> RMSE: {nn_rmse:.2f}  MAE: {nn_mae:.2f}  R2: {nn_r2:.3f}")
-        print()
+
+        # Ridge is the winner across all three horizons, save it
+        model_path = f"models/ridge_{target}.pkl"
+        joblib.dump(ridge_model, model_path)
+        print(f"Saved winning model to {model_path}\n")
+
+        register_model(model_path, target, ridge_rmse, ridge_mae, ridge_r2)
