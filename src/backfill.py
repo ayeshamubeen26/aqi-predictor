@@ -109,7 +109,7 @@ def combine_history(city_name, pollution_by_hour, weather_by_hour):
     return combined_rows
 
 if __name__ == "__main__":
-    DAYS_BACK = 90  # adjust this later once you're confident everything works
+    DAYS_BACK = 365  # adjust this later once you're confident everything works
 
     dates = get_date_range(DAYS_BACK)
     print("Date range:", dates)
