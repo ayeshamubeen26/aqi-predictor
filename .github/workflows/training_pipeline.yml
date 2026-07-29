@@ -31,4 +31,4 @@ jobs:
       - name: Run training script
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-        run: python train.py
+        run: python src/train.py
