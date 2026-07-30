@@ -113,6 +113,19 @@ def predict_city(fs, city):
     Builds the current feature row for one city and returns a
     24h/48h/72h AQI forecast.
     """
+    result = predict_city_with_features(fs, city)
+    if result is None:
+        return None
+    forecast, _, _ = result
+    return forecast
+
+
+def predict_city_with_features(fs, city):
+    """
+    Same as predict_city, but also returns the built feature row and the
+    recent history used as a SHAP background reference, so the app can
+    explain the prediction as well as show it.
+    """
     live_row = fetch_live_row(city)
     history_df = get_recent_history(fs, city["name"])
     full_row = add_lag_and_rolling(history_df, live_row)
@@ -129,7 +142,7 @@ def predict_city(fs, city):
         model = load_model(target)
         forecast[target] = round(float(model.predict(X)[0]), 1)
 
-    return forecast
+    return forecast, X, history_df
 
 
 if __name__ == "__main__":
