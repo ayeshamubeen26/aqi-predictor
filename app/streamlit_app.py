@@ -1,19 +1,15 @@
 import sys
 import os
-
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-
 from config import get_cities
-from feature_store import get_feature_store
+from feature_store import get_feature_store, get_model_registry
 from predict import predict_city_with_features, load_model, FEATURE_COLUMNS, HORIZONS
 from explain import explain_prediction
 
 st.set_page_config(page_title="Pakistan AQI Forecast", page_icon="🌫️", layout="centered")
-
 st.title("Pakistan AQI Forecast")
 st.caption("3-day air quality forecast using live weather and pollutant data")
 
@@ -38,15 +34,21 @@ def load_feature_store():
     return get_feature_store()
 
 
+@st.cache_resource
+def load_model_registry():
+    return get_model_registry()
+
+
 fs = load_feature_store()
+mr = load_model_registry()
+
 cities = get_cities()
 city_names = [c["name"] for c in cities]
-
 selected_name = st.selectbox("Select a city", city_names)
 selected_city = next(c for c in cities if c["name"] == selected_name)
 
 with st.spinner(f"Fetching live data and forecasting for {selected_name}..."):
-    result = predict_city_with_features(fs, selected_city)
+    result = predict_city_with_features(fs, mr, selected_city)
 
 if result is None:
     st.error(
@@ -56,7 +58,6 @@ if result is None:
     )
 else:
     forecast, X_row, history_df = result
-
     current_color, current_label = aqi_color_and_label(forecast["current_aqi"])
     st.markdown(
         f"<div style='padding:14px;border-radius:8px;background-color:{current_color};"
@@ -64,14 +65,12 @@ else:
         f"Current AQI: {forecast['current_aqi']} — {current_label}</div>",
         unsafe_allow_html=True,
     )
-
     max_forecast = max(forecast[h] for h in HORIZONS)
     if max_forecast > 150:
         st.warning(
             "Hazard alert: AQI is expected to reach unhealthy levels "
             "within the next 3 days."
         )
-
     horizon_labels = ["Now", "24h", "48h", "72h"]
     horizon_values = [
         forecast["current_aqi"],
@@ -79,7 +78,6 @@ else:
         forecast["target_aqi_48h"],
         forecast["target_aqi_72h"],
     ]
-
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -103,10 +101,8 @@ else:
         "SHAP values show how much each feature pushed the 24h forecast "
         "up or down, relative to this city's recent typical conditions."
     )
-
-    model_24h = load_model("target_aqi_24h")
+    model_24h = load_model(mr, "target_aqi_24h")
     contributions = explain_prediction(model_24h, X_row, history_df, FEATURE_COLUMNS)
-
     top_contributions = contributions.head(10)
     shap_fig = go.Figure(
         go.Bar(
@@ -125,7 +121,6 @@ else:
         height=400,
     )
     st.plotly_chart(shap_fig, use_container_width=True)
-
     st.caption(
         "Red bars pushed the forecast higher, green bars pulled it lower."
     )

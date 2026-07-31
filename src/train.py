@@ -8,6 +8,7 @@ import tensorflow as tf
 from tensorflow import keras
 import joblib
 import os
+import traceback
 from feature_store import get_feature_store, get_model_registry
 
 def load_clean_data():
@@ -96,6 +97,7 @@ def train_ridge(train_df, test_df, target_col):
     r2 = r2_score(y_test, y_pred)
     return model, rmse, mae, r2
 
+
 def train_random_forest(train_df, test_df, target_col):
     X_train = train_df[FEATURE_COLUMNS]
     y_train = train_df[target_col]
@@ -110,6 +112,7 @@ def train_random_forest(train_df, test_df, target_col):
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
     return model, rmse, mae, r2
+
 
 def train_neural_network(train_df, test_df, target_col):
     X_train = train_df[FEATURE_COLUMNS].values
@@ -145,21 +148,26 @@ def train_neural_network(train_df, test_df, target_col):
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
-    return model, rmse, mae, r2
 
-def register_model(model_path, target, rmse, mae, r2):
+    # Neural net needs its scaler saved alongside it, since predict.py
+    # will need to apply the same scaling at inference time
+    return model, rmse, mae, r2, scaler
+
+
+def register_model(model_path, model_type, target, rmse, mae, r2):
     mr = get_model_registry()
 
-    model_name = f"aqi_ridge_{target}"
+    model_name = f"aqi_{model_type}_{target}"
     metrics = {"rmse": float(rmse), "mae": float(mae), "r2": float(r2)}
 
     hw_model = mr.python.create_model(
         name=model_name,
         metrics=metrics,
-        description=f"Ridge regression model for {target}"
+        description=f"{model_type.replace('_', ' ').title()} model for {target}"
     )
     hw_model.save(model_path)
     print(f"Registered {model_name} to Hopsworks Model Registry (RMSE={rmse:.2f})")
+
 
 if __name__ == "__main__":
     df = load_clean_data()
@@ -179,15 +187,41 @@ if __name__ == "__main__":
         ridge_model, ridge_rmse, ridge_mae, ridge_r2 = train_ridge(train_df, test_df, target)
         print(f"Ridge         -> RMSE: {ridge_rmse:.2f}  MAE: {ridge_mae:.2f}  R2: {ridge_r2:.3f}")
 
-        _, rf_rmse, rf_mae, rf_r2 = train_random_forest(train_df, test_df, target)
+        rf_model, rf_rmse, rf_mae, rf_r2 = train_random_forest(train_df, test_df, target)
         print(f"Random Forest -> RMSE: {rf_rmse:.2f}  MAE: {rf_mae:.2f}  R2: {rf_r2:.3f}")
 
-        _, nn_rmse, nn_mae, nn_r2 = train_neural_network(train_df, test_df, target)
+        nn_model, nn_rmse, nn_mae, nn_r2, nn_scaler = train_neural_network(train_df, test_df, target)
         print(f"Neural Net    -> RMSE: {nn_rmse:.2f}  MAE: {nn_mae:.2f}  R2: {nn_r2:.3f}")
 
-        # Ridge is the winner across all three horizons, save it
-        model_path = f"models/ridge_{target}.pkl"
-        joblib.dump(ridge_model, model_path)
-        print(f"Saved winning model to {model_path}\n")
+        # Actually compare all three and pick the real winner by RMSE
+        candidates = [
+            ("ridge", ridge_model, ridge_rmse, ridge_mae, ridge_r2),
+            ("random_forest", rf_model, rf_rmse, rf_mae, rf_r2),
+            ("neural_net", nn_model, nn_rmse, nn_mae, nn_r2),
+        ]
+        winner_type, winner_model, winner_rmse, winner_mae, winner_r2 = min(
+            candidates, key=lambda c: c[2]
+        )
 
-        register_model(model_path, target, ridge_rmse, ridge_mae, ridge_r2)
+        print(f"Winner: {winner_type} (RMSE: {winner_rmse:.2f})")
+
+        # Save the winning model to disk, handling Keras separately from sklearn,
+        # since joblib doesn't reliably serialize Keras models
+        if winner_type == "neural_net":
+            model_path = f"models/{winner_type}_{target}.keras"
+            winner_model.save(model_path)
+
+            # Save the scaler too, predict.py will need it to transform
+            # incoming features before calling this model
+            scaler_path = f"models/{winner_type}_{target}_scaler.pkl"
+            joblib.dump(nn_scaler, scaler_path)
+            print(f"Saved scaler to {scaler_path}")
+        else:
+            model_path = f"models/{winner_type}_{target}.pkl"
+            joblib.dump(winner_model, model_path)
+            try:
+                register_model(model_path, winner_type, target, winner_rmse, winner_mae, winner_r2)
+            except Exception:
+                print(f"!!! register_model FAILED for {target} !!!")
+                traceback.print_exc()
+                print()

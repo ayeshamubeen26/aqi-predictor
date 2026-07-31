@@ -16,6 +16,14 @@ OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 
 HORIZONS = ["target_aqi_24h", "target_aqi_48h", "target_aqi_72h"]
 
+# Which model type won and got registered for each horizon.
+# Update this if a future retrain produces a different winner.
+MODEL_TYPES = {
+    "target_aqi_24h": "random_forest",
+    "target_aqi_48h": "random_forest",
+    "target_aqi_72h": "random_forest",
+}
+
 FEATURE_COLUMNS = [
     "hour_sin", "hour_cos", "dow_sin", "dow_cos", "month",
     "temp", "humidity", "wind_speed", "wind_sin", "wind_cos",
@@ -88,39 +96,41 @@ def add_lag_and_rolling(history_df, live_row):
     return combined.iloc[-1]
 
 
-def load_model(target):
+def load_model(mr, target):
     """
-    Downloads and caches the registered Ridge model for a given horizon
-    from the Hopsworks Model Registry.
+    Downloads and caches the registered winning model for a given horizon
+    from the Hopsworks Model Registry. `mr` is passed in rather than
+    created here, so Streamlit can supply a single cached connection
+    instead of this function logging in separately for every horizon.
     """
     if target in _model_cache:
         return _model_cache[target]
 
-    mr = get_model_registry()
-    model_name = f"aqi_ridge_{target}"
+    model_type = MODEL_TYPES[target]
+    model_name = f"aqi_{model_type}_{target}"
     hw_model = mr.get_model(model_name, version=1)
     model_dir = hw_model.download()
 
-    model_path = os.path.join(model_dir, f"ridge_{target}.pkl")
+    model_path = os.path.join(model_dir, f"{model_type}_{target}.pkl")
     model = joblib.load(model_path)
 
     _model_cache[target] = model
     return model
 
 
-def predict_city(fs, city):
+def predict_city(fs, mr, city):
     """
     Builds the current feature row for one city and returns a
     24h/48h/72h AQI forecast.
     """
-    result = predict_city_with_features(fs, city)
+    result = predict_city_with_features(fs, mr, city)
     if result is None:
         return None
     forecast, _, _ = result
     return forecast
 
 
-def predict_city_with_features(fs, city):
+def predict_city_with_features(fs, mr, city):
     """
     Same as predict_city, but also returns the built feature row and the
     recent history used as a SHAP background reference, so the app can
@@ -139,7 +149,7 @@ def predict_city_with_features(fs, city):
 
     forecast = {"city": city["name"], "current_aqi": full_row["aqi"]}
     for target in HORIZONS:
-        model = load_model(target)
+        model = load_model(mr, target)
         forecast[target] = round(float(model.predict(X)[0]), 1)
 
     return forecast, X, history_df
@@ -147,12 +157,13 @@ def predict_city_with_features(fs, city):
 
 if __name__ == "__main__":
     fs = get_feature_store()
+    mr = get_model_registry()
     cities = get_cities()
 
     results = []
     for city in cities:
         print(f"Predicting for {city['name']}...")
-        forecast = predict_city(fs, city)
+        forecast = predict_city(fs, mr, city)
         if forecast:
             results.append(forecast)
             print(
