@@ -16,13 +16,12 @@ OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 
 HORIZONS = ["target_aqi_24h", "target_aqi_48h", "target_aqi_72h"]
 
-# Which model type won and got registered for each horizon.
-# Update this if a future retrain produces a different winner.
-MODEL_TYPES = {
-    "target_aqi_24h": "random_forest",
-    "target_aqi_48h": "random_forest",
-    "target_aqi_72h": "random_forest",
-}
+# train.py only registers the winning model type per horizon, under a
+# name like aqi_{model_type}_{target}. Since we don't know ahead of time
+# which type won, load_model() tries each candidate name and uses
+# whichever one actually exists in the registry, instead of a hardcoded
+# guess that goes stale the next time the winner changes.
+CANDIDATE_MODEL_TYPES = ["random_forest", "ridge", "neural_net"]
 
 FEATURE_COLUMNS = [
     "hour_sin", "hour_cos", "dow_sin", "dow_cos", "month",
@@ -34,6 +33,22 @@ FEATURE_COLUMNS = [
 ]
 
 _model_cache = {}
+
+
+class NeuralNetModel:
+    """
+    Wraps a loaded Keras model together with the scaler it was trained
+    with, so callers elsewhere (predict_city_with_features, explain.py)
+    can call .predict(X) on raw feature values exactly like they do for
+    the sklearn models, without needing to know scaling happened at all.
+    """
+    def __init__(self, keras_model, scaler):
+        self.keras_model = keras_model
+        self.scaler = scaler
+
+    def predict(self, X):
+        X_scaled = self.scaler.transform(np.asarray(X))
+        return self.keras_model.predict(X_scaled, verbose=0).flatten()
 
 
 def fetch_live_row(city):
@@ -102,14 +117,48 @@ def load_model(mr, target):
     from the Hopsworks Model Registry. `mr` is passed in rather than
     created here, so Streamlit can supply a single cached connection
     instead of this function logging in separately for every horizon.
+
+    Tries each candidate model type in turn, since only the winning type
+    for a given horizon is actually registered. This means predict.py
+    keeps working automatically after a retrain changes the winner,
+    instead of needing a manual update every time.
     """
     if target in _model_cache:
         return _model_cache[target]
 
-    model_type = MODEL_TYPES[target]
-    model_name = f"aqi_{model_type}_{target}"
-    hw_model = mr.get_model(model_name, version=1)
+    hw_model = None
+    model_type = None
+    for candidate_type in CANDIDATE_MODEL_TYPES:
+        model_name = f"aqi_{candidate_type}_{target}"
+        try:
+            hw_model = mr.get_best_model(model_name, metric="rmse", direction="min")
+            model_type = candidate_type
+            break
+        except Exception:
+            continue
+
+    if hw_model is None:
+        raise RuntimeError(
+            f"No registered model found for {target} under any of "
+            f"{CANDIDATE_MODEL_TYPES}. Check that train.py registered "
+            f"a winner for this horizon."
+        )
+
     model_dir = hw_model.download()
+
+    if model_type == "neural_net":
+        # train.py saves the keras model and its scaler side by side in
+        # one folder and registers that folder, so both come down
+        # together in model_dir.
+        import keras as keras_lib
+        keras_path = os.path.join(model_dir, f"{model_type}_{target}.keras")
+        scaler_path = os.path.join(model_dir, f"{model_type}_{target}_scaler.pkl")
+        keras_model = keras_lib.models.load_model(keras_path)
+        scaler = joblib.load(scaler_path)
+        model = NeuralNetModel(keras_model, scaler)
+
+        _model_cache[target] = model
+        return model
 
     model_path = os.path.join(model_dir, f"{model_type}_{target}.pkl")
     model = joblib.load(model_path)

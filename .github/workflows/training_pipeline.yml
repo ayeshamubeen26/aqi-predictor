@@ -1,12 +1,14 @@
 name: Train AQI Models
 
 on:
+  schedule:
+    - cron: '0 2 * * *'  # runs daily at 2am UTC
   push:
     branches:
       - main
     paths:
-      - 'train.py'
-      - 'feature_store.py'
+      - 'src/train.py'
+      - 'src/feature_store.py'
       - 'requirements.txt'
   workflow_dispatch:
 
@@ -31,4 +33,6 @@ jobs:
       - name: Run training script
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+          TRAIN_WINDOW_DAYS: "365"  # keeps training time/cost bounded as the feature store keeps growing
         run: python src/train.py

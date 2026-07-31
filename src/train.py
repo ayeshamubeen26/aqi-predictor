@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from datetime import timedelta
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
@@ -11,11 +12,22 @@ import os
 import traceback
 from feature_store import get_feature_store, get_model_registry
 
+# How much history to train on. The feature store grows by roughly
+# 120 rows/hour forever (5 cities x 24h), so training on the full
+# history every run means training time and Hopsworks read cost grow
+# without limit. A fixed rolling window keeps both bounded permanently,
+# and AQI's relationship to weather/pollutants doesn't shift fast
+# enough to need more than a year of context anyway. Override with the
+# TRAIN_WINDOW_DAYS env var if you want to experiment with a shorter
+# or longer window without editing code.
+TRAIN_WINDOW_DAYS = int(os.getenv("TRAIN_WINDOW_DAYS", "365"))
+
 def load_clean_data():
     """
-    Loads the final feature dataset from Hopsworks and drops any rows
-    missing lag/rolling features or targets (unavoidable edge rows from
-    the start/end of each city's history).
+    Loads the final feature dataset from Hopsworks, restricts it to the
+    most recent TRAIN_WINDOW_DAYS days, and drops any rows missing
+    lag/rolling features or targets (unavoidable edge rows from the
+    start/end of each city's history).
     """
     fs = get_feature_store()
     fg = fs.get_feature_group("aqi_features_final", version=1)
@@ -25,7 +37,11 @@ def load_clean_data():
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values(["city", "timestamp"]).reset_index(drop=True)
 
-    print(f"Loaded {len(df)} rows before cleaning")
+    print(f"Loaded {len(df)} rows before windowing/cleaning")
+
+    cutoff = df["timestamp"].max() - timedelta(days=TRAIN_WINDOW_DAYS)
+    df = df[df["timestamp"] >= cutoff].reset_index(drop=True)
+    print(f"Kept {len(df)} rows after restricting to the last {TRAIN_WINDOW_DAYS} days")
 
     required_columns = [
         "pm2_5_lag_1h", "pm2_5_lag_3h", "pm2_5_lag_24h",
@@ -208,14 +224,27 @@ if __name__ == "__main__":
         # Save the winning model to disk, handling Keras separately from sklearn,
         # since joblib doesn't reliably serialize Keras models
         if winner_type == "neural_net":
-            model_path = f"models/{winner_type}_{target}.keras"
+            # Keras model + its scaler need to travel together as one
+            # registry entry, since predict.py can't use one without
+            # the other. Hopsworks accepts a directory as a model
+            # artifact, so save both files into one folder and
+            # register that folder, same as the sklearn models below.
+            model_dir = f"models/{winner_type}_{target}"
+            os.makedirs(model_dir, exist_ok=True)
+
+            model_path = os.path.join(model_dir, f"{winner_type}_{target}.keras")
             winner_model.save(model_path)
 
-            # Save the scaler too, predict.py will need it to transform
-            # incoming features before calling this model
-            scaler_path = f"models/{winner_type}_{target}_scaler.pkl"
+            scaler_path = os.path.join(model_dir, f"{winner_type}_{target}_scaler.pkl")
             joblib.dump(nn_scaler, scaler_path)
-            print(f"Saved scaler to {scaler_path}")
+            print(f"Saved model and scaler to {model_dir}")
+
+            try:
+                register_model(model_dir, winner_type, target, winner_rmse, winner_mae, winner_r2)
+            except Exception:
+                print(f"!!! register_model FAILED for {target} !!!")
+                traceback.print_exc()
+                print()
         else:
             model_path = f"models/{winner_type}_{target}.pkl"
             joblib.dump(winner_model, model_path)

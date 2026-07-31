@@ -41,3 +41,21 @@ Registered aqi_random_forest_target_aqi_72h to Hopsworks Model Registry (RMSE=31
 PS>git status
 
 ]633;D;0]633;A]633;P;Cwd=C:\x5cUsers\x5cHomePC\x5cDesktop\x5caqi-predictorPS C:\Users\HomePC\Desktop\aqi-predictor> ]633;B
+PS>git add .
+git commit -m "Fix train.py to correctly select best model by RMSE instead of hardcoding Ridge; register winning model per horizon (Random Forest wins all three on 2-year dataset)"
+git push
+
+[main cc5265e] Fix train.py to correctly select best model by RMSE instead of hardcoding Ridge; registe
+r winning model per horizon (Random Forest wins all three on 2-year dataset)
+ 5 files changed, 122 insertions(+), 39 deletions(-)
+ create mode 100644 train_log.txt
+Enumerating objects: 16, done.
+Counting objects: 100% (16/16), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (8/8), done.
+Writing objects: 100% (9/9), 3.20 KiB | 297.00 KiB/s, done.
+Total 9 (delta 6), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (6/6), completed with 6 local objects.
+To https://github.com/ayeshamubeen26/aqi-predictor.git
+   f72c84b..cc5265e  main -> main
+]633;D;0]633;A]633;P;Cwd=C:\x5cUsers\x5cHomePC\x5cDesktop\x5caqi-predictorPS C:\Users\HomePC\Desktop\aqi-predictor> ]633;B
