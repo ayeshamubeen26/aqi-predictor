@@ -96,31 +96,38 @@ else:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("What's driving the 24h prediction?")
+    st.subheader("What's driving each forecast?")
     st.caption(
-        "SHAP values show how much each feature pushed the 24h forecast "
-        "up or down, relative to this city's recent typical conditions."
+        "SHAP values show how much each feature pushed a forecast up or "
+        "down, relative to this city's recent typical conditions. Each "
+        "horizon uses its own model, so the driving features can differ."
     )
-    model_24h = load_model(mr, "target_aqi_24h")
-    contributions = explain_prediction(model_24h, X_row, history_df, FEATURE_COLUMNS)
-    top_contributions = contributions.head(10)
-    shap_fig = go.Figure(
-        go.Bar(
-            x=top_contributions.values,
-            y=top_contributions.index,
-            orientation="h",
-            marker_color=[
-                "#ff0000" if v > 0 else "#00c04b" for v in top_contributions.values
-            ],
-        )
-    )
-    shap_fig.update_layout(
-        title="Top feature contributions (24h forecast)",
-        xaxis_title="Impact on predicted AQI",
-        yaxis=dict(autorange="reversed"),
-        height=400,
-    )
-    st.plotly_chart(shap_fig, use_container_width=True)
-    st.caption(
-        "Red bars pushed the forecast higher, green bars pulled it lower."
-    )
+
+    horizon_tab_labels = {"target_aqi_24h": "24h", "target_aqi_48h": "48h", "target_aqi_72h": "72h"}
+    tabs = st.tabs([horizon_tab_labels[h] for h in HORIZONS])
+
+    for tab, horizon in zip(tabs, HORIZONS):
+        with tab:
+            model = load_model(mr, horizon)
+            contributions = explain_prediction(model, X_row, history_df, FEATURE_COLUMNS)
+            top_contributions = contributions.head(10)
+            shap_fig = go.Figure(
+                go.Bar(
+                    x=top_contributions.values,
+                    y=top_contributions.index,
+                    orientation="h",
+                    marker_color=[
+                        "#ff0000" if v > 0 else "#00c04b" for v in top_contributions.values
+                    ],
+                )
+            )
+            shap_fig.update_layout(
+                title=f"Top feature contributions ({horizon_tab_labels[horizon]} forecast)",
+                xaxis_title="Impact on predicted AQI",
+                yaxis=dict(autorange="reversed"),
+                height=400,
+            )
+            st.plotly_chart(shap_fig, use_container_width=True, key=f"shap_{horizon}")
+            st.caption(
+                "Red bars pushed the forecast higher, green bars pulled it lower."
+            )

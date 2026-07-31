@@ -80,11 +80,19 @@ def get_recent_history(fs, city_name, hours=25):
     """
     Pulls the most recent rows for a city from the feature store, enough
     to compute 24h lag and rolling features once the fresh row is added.
+
+    Filters by city server-side via the Hopsworks query API, instead of
+    reading the entire feature group (every city, entire training
+    window) and filtering locally. Pulling the whole table on every
+    single prediction is what strains the connection, especially over
+    a home network rather than a CI runner's network path, and gets
+    slower every day as the feature store keeps growing.
     """
     fg = fs.get_feature_group("aqi_features_final", version=1)
-    df = fg.read()
+    query = fg.select_all().filter(fg.city == city_name)
+    df = query.read()
     df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df = df[df["city"] == city_name].sort_values("timestamp")
+    df = df.sort_values("timestamp")
     return df.tail(hours).reset_index(drop=True)
 
 
