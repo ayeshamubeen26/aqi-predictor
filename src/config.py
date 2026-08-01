@@ -10,3 +10,5 @@ def get_cities():
         name, lat, lon = entry.split(":")
         cities.append({"name": name, "lat": float(lat), "lon": float(lon)})
     return cities
+
+    

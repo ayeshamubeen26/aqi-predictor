@@ -12,96 +12,46 @@ from explain import explain_prediction
 st.set_page_config(page_title="Pakistan AQI Forecast", page_icon="🌫️", layout="wide")
 
 # ---------------------------------------------------------------------------
-# Styling. Streamlit's default look is functional but plain, this injects a
-# dark, card-based theme via CSS instead, closer to a hand-built dashboard
-# than the out-of-the-box widget styling.
+# Styling: light, card-based theme with soft shadows instead of borders,
+# closer to a hand-built product dashboard than Streamlit's plain default.
 # ---------------------------------------------------------------------------
 st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-        max-width: 1100px;
-    }
+    .block-container { padding-top: 2rem; padding-bottom: 3rem; max-width: 1150px; }
 
-    .hero-title {
-        font-size: 2.4rem;
-        font-weight: 800;
-        margin-bottom: 0.2rem;
-        letter-spacing: -0.02em;
-    }
-
-    .hero-subtitle {
-        color: #9aa4b2;
-        font-size: 1rem;
-        margin-bottom: 1.6rem;
-    }
+    .hero-title { font-size: 2.1rem; font-weight: 800; margin-bottom: 0.1rem; letter-spacing: -0.02em; color: #1a1f29; }
+    .hero-subtitle { color: #6b7280; font-size: 0.95rem; margin-bottom: 1.4rem; }
 
     .card {
-        background-color: #151a23;
-        border: 1px solid #232a36;
-        border-radius: 14px;
-        padding: 1.2rem 1.4rem;
-        margin-bottom: 1rem;
-    }
-
-    .stat-label {
-        color: #9aa4b2;
-        font-size: 0.78rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        margin-bottom: 0.3rem;
-    }
-
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-
-    .aqi-hero {
+        background-color: #ffffff;
+        border: 1px solid #eef0f3;
         border-radius: 16px;
-        padding: 1.8rem 2rem;
-        text-align: center;
-        margin-bottom: 1.2rem;
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
     }
 
-    .aqi-hero-value {
-        font-size: 3.2rem;
-        font-weight: 800;
-        line-height: 1;
-        margin-bottom: 0.3rem;
-    }
+    .stat-label { color: #6b7280; font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; color: #1a1f29; }
+    .stat-sub { color: #9aa4b2; font-size: 0.8rem; margin-top: 0.15rem; }
 
-    .aqi-hero-label {
-        font-size: 1.1rem;
-        font-weight: 600;
-        opacity: 0.9;
-    }
+    .section-title { font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 0.5rem 0; color: #1a1f29; }
+    .section-caption { color: #6b7280; font-size: 0.85rem; margin-bottom: 0.8rem; }
 
-    .section-title {
-        font-size: 1.15rem;
+    .badge {
+        display: inline-block;
+        padding: 2px 11px;
+        border-radius: 999px;
+        font-size: 0.72rem;
         font-weight: 700;
-        margin: 1.6rem 0 0.4rem 0;
     }
 
-    .section-caption {
-        color: #9aa4b2;
-        font-size: 0.88rem;
-        margin-bottom: 0.9rem;
-    }
-
-    div[data-testid="stSelectbox"] label {
-        font-weight: 600;
-        color: #e6e6e6;
-    }
+    div[data-testid="stSelectbox"] label { font-weight: 600; color: #1a1f29; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -110,42 +60,42 @@ st.markdown(
 
 def aqi_color_and_label(aqi):
     if aqi <= 50:
-        return "#00e400", "Good"
+        return "#00b050", "Good"
     elif aqi <= 100:
-        return "#ffff00", "Moderate"
+        return "#d4a600", "Moderate"
     elif aqi <= 150:
-        return "#ff7e00", "Unhealthy for Sensitive Groups"
+        return "#e07a00", "Unhealthy for Sensitive Groups"
     elif aqi <= 200:
-        return "#ff0000", "Unhealthy"
+        return "#e02424", "Unhealthy"
     elif aqi <= 300:
         return "#8f3f97", "Very Unhealthy"
     else:
         return "#7e0023", "Hazardous"
 
 
-def stat_card(label, value, unit=""):
+def badge_html(label, color):
+    return f'<span class="badge" style="background-color:{color}1a; color:{color};">{label}</span>'
+
+
+def stat_card(label, value, unit="", sub=None):
+    sub_html = f'<div class="stat-sub">{sub}</div>' if sub else ""
     st.markdown(
-        f"""
-        <div class="card">
-            <div class="stat-label">{label}</div>
-            <div class="stat-value">{value}{unit}</div>
-        </div>
-        """,
+        f"""<div class="card"><div class="stat-label">{label}</div>
+        <div class="stat-value">{value}{unit}</div>{sub_html}</div>""",
         unsafe_allow_html=True,
     )
 
 
-def styled_plotly(fig, height=400):
-    """Applies the dark card theme to a Plotly figure so charts match the
-    rest of the dashboard instead of defaulting to a white background."""
+def styled_plotly(fig, height=380):
+    """Applies the light card theme to a Plotly figure."""
     fig.update_layout(
         height=height,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color="#e6e6e6"),
-        margin=dict(l=10, r=10, t=50, b=10),
-        xaxis=dict(gridcolor="#232a36", zerolinecolor="#232a36"),
-        yaxis=dict(gridcolor="#232a36", zerolinecolor="#232a36"),
+        font=dict(family="Inter, sans-serif", color="#1a1f29"),
+        margin=dict(l=10, r=10, t=45, b=10),
+        xaxis=dict(gridcolor="#eef0f3", zerolinecolor="#eef0f3"),
+        yaxis=dict(gridcolor="#eef0f3", zerolinecolor="#eef0f3"),
     )
     return fig
 
@@ -200,120 +150,168 @@ if result is None:
     )
 else:
     forecast, X_row, history_df = result
-    current_color, current_label = aqi_color_and_label(forecast["current_aqi"])
+    row = X_row.iloc[0]
+    current_aqi = forecast["current_aqi"]
+    current_color, current_label = aqi_color_and_label(current_aqi)
 
-    # --- Hero AQI card ---
-    st.markdown(
-        f"""
-        <div class="aqi-hero" style="background-color:{current_color}22;
-             border: 1px solid {current_color}55;">
-            <div class="aqi-hero-value" style="color:{current_color};">
-                {forecast['current_aqi']}
-            </div>
-            <div class="aqi-hero-label">{current_label} · Current AQI in {selected_name}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # --- Top row: gauge + alert/health card ---
+    top_left, top_right = st.columns([1, 1])
 
-    max_forecast = max(forecast[h] for h in HORIZONS)
-    if max_forecast > 150:
-        st.warning(
-            "⚠️ Hazard alert: AQI is expected to reach unhealthy levels "
-            "within the next 3 days."
+    with top_left:
+        gauge = go.Figure(
+            go.Indicator(
+                mode="gauge+number",
+                value=current_aqi,
+                number={"font": {"size": 42, "color": current_color}},
+                gauge={
+                    "axis": {"range": [0, 300], "tickwidth": 1, "tickcolor": "#c9cfd8"},
+                    "bar": {"color": current_color, "thickness": 0.28},
+                    "bgcolor": "white",
+                    "borderwidth": 0,
+                    "steps": [
+                        {"range": [0, 50], "color": "rgba(0,176,80,0.13)"},
+                        {"range": [50, 100], "color": "rgba(212,166,0,0.13)"},
+                        {"range": [100, 150], "color": "rgba(224,122,0,0.13)"},
+                        {"range": [150, 200], "color": "rgba(224,36,36,0.13)"},
+                        {"range": [200, 300], "color": "rgba(143,63,151,0.13)"},
+                    ],
+                },
+                title={"text": f"{selected_name} · Current AQI", "font": {"size": 14, "color": "#6b7280"}},
+            )
+        )
+        st.plotly_chart(styled_plotly(gauge, height=260), use_container_width=True)
+        st.markdown(
+            f'<div style="text-align:center; margin-top:-1rem;">{badge_html(current_label, current_color)}</div>',
+            unsafe_allow_html=True,
         )
 
-    # --- Pollutant levels, all six raw pollutant readings, not just PM2.5/PM10 ---
-    st.markdown('<div class="section-title">Current Pollutant Levels</div>', unsafe_allow_html=True)
-    row = X_row.iloc[0]
-    p1, p2, p3 = st.columns(3)
-    with p1:
-        stat_card("PM2.5", f"{row['pm2_5']:.0f}", " µg/m³")
-        stat_card("CO", f"{row['co']:.0f}", " µg/m³")
-    with p2:
-        stat_card("PM10", f"{row['pm10']:.0f}", " µg/m³")
-        stat_card("NO₂", f"{row['no2']:.1f}", " µg/m³")
-    with p3:
-        stat_card("O₃", f"{row['o3']:.1f}", " µg/m³")
-        stat_card("SO₂", f"{row['so2']:.1f}", " µg/m³")
+    with top_right:
+        max_forecast = max(forecast[h] for h in HORIZONS)
+        if max_forecast > 150:
+            st.markdown(
+                f"""<div class="card" style="border-left: 4px solid #e02424;">
+                <div class="stat-label" style="color:#e02424;">⚠️ Air Quality Alert</div>
+                <div style="font-size:0.9rem; color:#374151; margin-top:0.3rem;">
+                Air quality is expected to reach unhealthy levels within the next 3 days.
+                </div></div>""",
+                unsafe_allow_html=True,
+            )
+        st.markdown(
+            f"""<div class="card" style="border-left: 4px solid {current_color};">
+            <div class="stat-label">Health Guidance</div>
+            <div style="font-size:0.9rem; color:#374151; margin-top:0.3rem; line-height:1.5;">
+            {health_guidance(current_aqi)}
+            </div></div>""",
+            unsafe_allow_html=True,
+        )
 
-    # --- Current weather conditions used as model inputs ---
-    st.markdown('<div class="section-title">Current Conditions</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        stat_card("Temperature", f"{row['temp']:.0f}", " °C")
-    with c2:
+    # --- Current pollutants ---
+    st.markdown('<div class="section-title">Current Pollutants</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-caption">Live pollutant concentrations in {selected_name}</div>', unsafe_allow_html=True)
+    pollutants = [
+        ("PM2.5", row["pm2_5"], " µg/m³", 0),
+        ("PM10", row["pm10"], " µg/m³", 0),
+        ("O₃", row["o3"], " µg/m³", 1),
+        ("NO₂", row["no2"], " µg/m³", 1),
+        ("SO₂", row["so2"], " µg/m³", 1),
+        ("CO", row["co"], " µg/m³", 0),
+    ]
+    pcols = st.columns(6)
+    for col, (label, value, unit, dp) in zip(pcols, pollutants):
+        with col:
+            stat_card(label, f"{value:.{dp}f}", unit)
+
+    # --- 24h trend + current conditions ---
+    trend_col, cond_col = st.columns([2, 1])
+
+    with trend_col:
+        st.markdown('<div class="section-title">24-Hour AQI Trend</div>', unsafe_allow_html=True)
+        hist = history_df.copy()
+        hist["timestamp"] = pd.to_datetime(hist["timestamp"])
+        trend_fig = go.Figure(
+            go.Scatter(
+                x=hist["timestamp"],
+                y=hist["aqi"],
+                mode="lines",
+                line=dict(color=current_color, width=2.5),
+                fill="tozeroy",
+                fillcolor=f"{current_color}18",
+            )
+        )
+        st.plotly_chart(styled_plotly(trend_fig, height=280), use_container_width=True)
+        h1, h2, h3, h4 = st.columns(4)
+        h1.markdown(f'<div class="stat-label">Current</div><div class="stat-value" style="font-size:1.1rem;">{hist["aqi"].iloc[-1]:.0f}</div>', unsafe_allow_html=True)
+        h2.markdown(f'<div class="stat-label">Average</div><div class="stat-value" style="font-size:1.1rem;">{hist["aqi"].mean():.0f}</div>', unsafe_allow_html=True)
+        h3.markdown(f'<div class="stat-label">Min</div><div class="stat-value" style="font-size:1.1rem;">{hist["aqi"].min():.0f}</div>', unsafe_allow_html=True)
+        h4.markdown(f'<div class="stat-label">Max</div><div class="stat-value" style="font-size:1.1rem;">{hist["aqi"].max():.0f}</div>', unsafe_allow_html=True)
+
+    with cond_col:
+        st.markdown('<div class="section-title">Current Conditions</div>', unsafe_allow_html=True)
+        stat_card("Temperature", f"{row['temp']:.1f}", " °C")
         stat_card("Humidity", f"{row['humidity']:.0f}", "%")
-    with c3:
         stat_card("Wind speed", f"{row['wind_speed']:.1f}", " m/s")
 
-    # --- Health guidance, standard EPA-style AQI category guidance ---
-    st.markdown(
-        f"""
-        <div class="card" style="border-left: 4px solid {current_color};">
-            <div class="stat-label">Health Guidance</div>
-            <div style="font-size:0.95rem; line-height:1.5;">{health_guidance(forecast['current_aqi'])}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # --- Forecast day cards, each with its own live RMSE badge ---
+    st.markdown('<div class="section-title">AI Air Quality Forecast</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-caption">Predicted AQI for the next three days</div>', unsafe_allow_html=True)
 
-    # --- Model performance, real metrics stored by train.py at registration time ---
-    st.markdown('<div class="section-title">Model Performance</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="section-caption">Accuracy of the currently deployed model for each forecast horizon, measured on held-out historical data.</div>',
-        unsafe_allow_html=True,
+    day_cols = st.columns(3)
+    day_labels = [("24h", "Day 1"), ("48h", "Day 2"), ("72h", "Day 3")]
+    for col, horizon, (h_label, d_label) in zip(day_cols, HORIZONS, day_labels):
+        with col:
+            value = forecast[horizon]
+            f_color, f_label = aqi_color_and_label(value)
+            metrics = get_model_metrics(mr, horizon)
+            rmse_text = f"± {metrics['rmse']:.2f}" if metrics else "N/A"
+            st.markdown(
+                f"""<div class="card" style="border-top: 3px solid {f_color};">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="stat-label">{h_label} · {d_label}</span>
+                    {badge_html(f_label, f_color)}
+                </div>
+                <div class="stat-value" style="font-size:1.7rem; color:{f_color}; margin-top:0.4rem;">{value:.1f}</div>
+                <div class="stat-sub">predicted AQI</div>
+                <div class="stat-sub" style="margin-top:0.5rem;">Model RMSE {rmse_text}</div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+    # --- Forecast trend chart ---
+    st.markdown('<div class="section-title">Predicted AQI Trend</div>', unsafe_allow_html=True)
+    horizon_labels = ["Now", "24h", "48h", "72h"]
+    horizon_values = [current_aqi, forecast["target_aqi_24h"], forecast["target_aqi_48h"], forecast["target_aqi_72h"]]
+    trend2 = go.Figure(
+        go.Scatter(
+            x=horizon_labels, y=horizon_values, mode="lines+markers",
+            line=dict(width=3, color="#2563eb"), marker=dict(size=9, color="#2563eb"),
+            fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
+        )
     )
-    m1, m2, m3 = st.columns(3)
-    for col, horizon, label in zip([m1, m2, m3], HORIZONS, ["24h", "48h", "72h"]):
+    st.plotly_chart(styled_plotly(trend2, height=320), use_container_width=True)
+
+    # --- Prediction system summary ---
+    st.markdown('<div class="section-title">Prediction System</div>', unsafe_allow_html=True)
+    sys_cols = st.columns(3)
+    for col, horizon, label in zip(sys_cols, HORIZONS, ["24h", "48h", "72h"]):
         with col:
             metrics = get_model_metrics(mr, horizon)
             if metrics:
                 st.markdown(
-                    f"""
-                    <div class="card">
-                        <div class="stat-label">{label} forecast · {metrics['model_type'].replace('_', ' ').title()}</div>
-                        <div class="stat-value">RMSE {metrics['rmse']:.2f}</div>
-                        <div style="color:#9aa4b2; font-size:0.82rem; margin-top:0.2rem;">
-                            MAE {metrics['mae']:.2f} · R² {metrics['r2']:.2f}
-                        </div>
-                    </div>
-                    """,
+                    f"""<div class="card">
+                    <div class="stat-label">{label} model</div>
+                    <div class="stat-value" style="font-size:1.15rem;">{metrics['model_type'].replace('_', ' ').title()}</div>
+                    <div class="stat-sub">RMSE {metrics['rmse']:.2f} · MAE {metrics['mae']:.2f} · R² {metrics['r2']:.2f}</div>
+                    </div>""",
                     unsafe_allow_html=True,
                 )
             else:
-                stat_card(f"{label} forecast", "N/A")
-
-    # --- Forecast chart ---
-    st.markdown('<div class="section-title">3-Day Forecast</div>', unsafe_allow_html=True)
-    horizon_labels = ["Now", "24h", "48h", "72h"]
-    horizon_values = [
-        forecast["current_aqi"],
-        forecast["target_aqi_24h"],
-        forecast["target_aqi_48h"],
-        forecast["target_aqi_72h"],
-    ]
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=horizon_labels,
-            y=horizon_values,
-            mode="lines+markers",
-            line=dict(width=3, color="#00c04b"),
-            marker=dict(size=10, color="#00c04b"),
-            fill="tozeroy",
-            fillcolor="rgba(0,192,75,0.08)",
-        )
-    )
-    fig.update_layout(title=f"{selected_name} AQI Forecast", yaxis_title="AQI", xaxis_title="Time Horizon")
-    st.plotly_chart(styled_plotly(fig), use_container_width=True)
+                stat_card(f"{label} model", "N/A")
 
     # --- SHAP explanations ---
-    st.markdown('<div class="section-title">What\'s driving each forecast?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Why this prediction</div>', unsafe_allow_html=True)
     st.markdown(
-        """<div class="section-caption">SHAP values show how much each feature pushed a forecast up or
-        down, relative to this city's recent typical conditions. Each horizon uses its own model,
-        so the driving features can differ.</div>""",
+        """<div class="section-caption">SHAP feature contributions for each forecast horizon, relative to this
+        city's recent typical conditions.</div>""",
         unsafe_allow_html=True,
     )
 
@@ -324,15 +322,30 @@ else:
         with tab:
             model = load_model(mr, horizon)
             contributions = explain_prediction(model, X_row, history_df, FEATURE_COLUMNS)
+            top_increase = contributions[contributions > 0].head(1)
+            top_decrease = contributions[contributions < 0].sort_values().head(1)
+
+            s1, s2, s3 = st.columns(3)
+            with s1:
+                stat_card("Predicted AQI", f"{forecast[horizon]:.1f}")
+            with s2:
+                if len(top_increase):
+                    stat_card("Top increase", f"{top_increase.index[0]}", sub=f"+{top_increase.values[0]:.2f}")
+                else:
+                    stat_card("Top increase", "None")
+            with s3:
+                if len(top_decrease):
+                    stat_card("Top decrease", f"{top_decrease.index[0]}", sub=f"{top_decrease.values[0]:.2f}")
+                else:
+                    stat_card("Top decrease", "None")
+
             top_contributions = contributions.head(10)
             shap_fig = go.Figure(
                 go.Bar(
                     x=top_contributions.values,
                     y=top_contributions.index,
                     orientation="h",
-                    marker_color=[
-                        "#ff4d4d" if v > 0 else "#00c04b" for v in top_contributions.values
-                    ],
+                    marker_color=["#e02424" if v > 0 else "#00b050" for v in top_contributions.values],
                 )
             )
             shap_fig.update_layout(
