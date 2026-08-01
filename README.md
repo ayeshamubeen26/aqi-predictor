@@ -91,7 +91,7 @@ aqi-predictor/
 ## Pipeline details
 
 ### Feature pipeline
-Runs hourly via `feature_pipeline.yml`. Fetches current weather and pollutant readings per city from OpenWeather, computes the AQI from PM2.5/PM10 using the EPA breakpoint formula, builds cyclical time features (hour, day of week, wind direction, encoded as sin/cos pairs rather than raw integers) and lag/rolling PM2.5 features (1h/3h/24h lags, 3h/6h/24h rolling means), and writes the result to the `aqi_features_final` feature group in Hopsworks.
+Runs on an hourly cron schedule via `feature_pipeline.yml` (in practice, GitHub Actions' free-tier scheduler introduces some delay under load, see Known limitations below). Fetches current weather and pollutant readings per city from OpenWeather, computes the AQI from PM2.5/PM10 using the EPA breakpoint formula, builds cyclical time features (hour, day of week, wind direction, encoded as sin/cos pairs rather than raw integers) and lag/rolling PM2.5 features (1h/3h/24h lags, 3h/6h/24h rolling means), and writes the result to the `aqi_features_final` feature group in Hopsworks.
 
 ### Backfill
 `src/backfill.py` runs the same feature logic across a historical date range to build up training data. The current feature store holds roughly two years of hourly history across all five cities.
@@ -126,6 +126,7 @@ See `notebooks/eda.ipynb` for the full analysis, run against the real backfilled
 
 ## Known limitations and possible next steps
 
+- The feature pipeline is configured to run hourly via cron (`0 * * * *`), and every run has completed successfully. In practice, GitHub Actions' scheduled workflows are not guaranteed to fire exactly on the hour, their documentation notes delays under high platform load, and observed gaps between runs have ranged from roughly 1.5 to 4 hours rather than a clean hourly cadence. This is a known limitation of GitHub's free-tier scheduler, not a bug in the pipeline itself.
 - The neural network never won any horizon in the runs so far, Random Forest consistently outperformed it. Worth revisiting with a different architecture or more training data before concluding tree-based models are simply the better fit for this problem.
 - `tests/` currently has no real test coverage beyond a placeholder file.
 - The repository has some leftover duplicate artifacts from earlier development (an older `src/models/` folder with early Ridge models, a duplicate `.env` file) that are safe to delete but haven't been cleaned up yet.
