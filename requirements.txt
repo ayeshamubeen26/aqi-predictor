@@ -2,7 +2,7 @@ requests
 python-dotenv
 hopsworks
 scikit-learn
-tensorflow
+tensorflow==2.18.1
 shap
 streamlit
 pandas
