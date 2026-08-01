@@ -119,6 +119,38 @@ def add_lag_and_rolling(history_df, live_row):
     return combined.iloc[-1]
 
 
+_model_metrics_cache = {}
+
+
+def get_model_metrics(mr, target):
+    """
+    Returns the RMSE/MAE/R2 that train.py stored as model metadata when it
+    registered the current winning model for this horizon, along with
+    which model type won. Only queries registry metadata, doesn't
+    download the model itself, so this is cheap to call for display
+    purposes even before load_model() is used for an actual prediction.
+    """
+    if target in _model_metrics_cache:
+        return _model_metrics_cache[target]
+
+    for candidate_type in CANDIDATE_MODEL_TYPES:
+        model_name = f"aqi_{candidate_type}_{target}"
+        try:
+            hw_model = mr.get_best_model(model_name, metric="rmse", direction="min")
+            metrics = {
+                "model_type": candidate_type,
+                "rmse": hw_model.training_metrics.get("rmse"),
+                "mae": hw_model.training_metrics.get("mae"),
+                "r2": hw_model.training_metrics.get("r2"),
+            }
+            _model_metrics_cache[target] = metrics
+            return metrics
+        except Exception:
+            continue
+
+    return None
+
+
 def load_model(mr, target):
     """
     Downloads and caches the registered winning model for a given horizon
