@@ -31,7 +31,7 @@ st.markdown(
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    .block-container { padding-top: 1.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
+    .block-container { padding-top: 3.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
 
     .hero-title { font-size: 2.1rem; font-weight: 800; margin-bottom: 0.1rem; letter-spacing: -0.02em; color: #1a1f29; }
     .hero-subtitle { color: #6b7280; font-size: 0.95rem; margin-bottom: 1.4rem; }
