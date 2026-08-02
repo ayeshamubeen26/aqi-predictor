@@ -1,5 +1,6 @@
 import sys
 import os
+from datetime import datetime
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 import streamlit as st
 import pandas as pd
@@ -75,6 +76,23 @@ st.markdown(
     }
 
     div[data-testid="stSelectbox"] label { font-weight: 600; color: #1a1f29; }
+
+    .nav-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.6rem; }
+    .nav-left { display: flex; align-items: center; gap: 0.8rem; }
+    .icon-badge {
+        width: 42px; height: 42px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .nav-meta { color: #6b7280; font-size: 0.82rem; display: flex; align-items: center; gap: 1.1rem; }
+
+    .eyebrow { color: #6b7280; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-bottom: 0.3rem; }
+    .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; }
+    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0.9rem; }
+    .delta-pill {
+        display: inline-flex; align-items: center; gap: 3px;
+        padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+    }
 
     /* Restyle Streamlit's native tabs as rounded pill buttons */
     .stTabs [data-baseweb="tab-list"] {
@@ -202,6 +220,21 @@ def health_guidance(aqi):
         return "Health emergency: the entire population is likely to be affected. Avoid all outdoor activity."
 
 
+def aqi_headline(aqi):
+    if aqi <= 50:
+        return "Air Quality is Good", "Conditions are clean and safe for all outdoor activities."
+    elif aqi <= 100:
+        return "Air Quality is Acceptable", "Current air quality conditions are within a generally acceptable range for most people."
+    elif aqi <= 150:
+        return "Sensitive Groups May Be Affected", "Air quality may pose a moderate health concern for sensitive individuals."
+    elif aqi <= 200:
+        return "Air Quality is Unhealthy", "Air quality is at levels that may affect the general population, not just sensitive groups."
+    elif aqi <= 300:
+        return "Air Quality is Very Unhealthy", "Health alert: current conditions pose a serious risk to the general population."
+    else:
+        return "Health Emergency Conditions", "Air quality has reached hazardous levels affecting the entire population."
+
+
 @st.cache_resource
 def load_feature_store():
     return get_feature_store()
@@ -215,15 +248,41 @@ def load_model_registry():
 fs = load_feature_store()
 mr = load_model_registry()
 
-st.markdown('<div class="hero-title">🌫️ AQI Prediction</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="hero-subtitle">3-day air quality forecast using live weather and pollutant data</div>',
-    unsafe_allow_html=True,
-)
-
 cities = get_cities()
 city_names = [c["name"] for c in cities]
-selected_name = st.selectbox("Select a city", city_names)
+
+nav_left, nav_right = st.columns([2, 1.6])
+with nav_left:
+    st.markdown(
+        """
+        <div class="nav-bar">
+            <div class="nav-left">
+                <div class="icon-badge" style="background-color:#dcfce7;">
+                    <span class="material-symbols-outlined" style="color:#16a34a; font-size:24px;">eco</span>
+                </div>
+                <div>
+                    <div style="font-size:1.3rem; font-weight:800; color:#1a1f29; line-height:1.1;">AQI Prediction</div>
+                    <div style="color:#6b7280; font-size:0.82rem;">AI-powered air quality intelligence</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with nav_right:
+    ctrl_col1, ctrl_col2 = st.columns([2, 1])
+    with ctrl_col1:
+        selected_name = st.selectbox("City", city_names, label_visibility="collapsed")
+    with ctrl_col2:
+        refresh_clicked = st.button("↻ Refresh", use_container_width=True)
+    st.markdown(
+        f'<div class="nav-meta" style="justify-content:flex-end; margin-top:0.3rem;">Updated {datetime.now().strftime("%I:%M %p")}</div>',
+        unsafe_allow_html=True,
+    )
+
+if refresh_clicked:
+    st.rerun()
+
 selected_city = next(c for c in cities if c["name"] == selected_name)
 
 with st.spinner(f"Fetching live data and forecasting for {selected_name}..."):
@@ -240,57 +299,94 @@ else:
     row = X_row.iloc[0]
     current_aqi = forecast["current_aqi"]
     current_color, current_label = aqi_color_and_label(current_aqi)
+    headline, headline_desc = aqi_headline(current_aqi)
 
-    # --- Top row: gauge + alert/health card ---
+    prev_aqi = history_df["aqi"].iloc[-1] if len(history_df) else current_aqi
+    delta = current_aqi - prev_aqi
+    if delta < 0:
+        delta_color, delta_icon, delta_text = "#00b050", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
+    elif delta > 0:
+        delta_color, delta_icon, delta_text = "#e02424", "trending_up", f"{abs(delta):.0f} points · Worsening vs previous reading"
+    else:
+        delta_color, delta_icon, delta_text = "#6b7280", "trending_flat", "No change vs previous reading"
+
+    # --- Hero: two cards side by side ---
     top_left, top_right = st.columns([1, 1])
 
     with top_left:
-        gauge = go.Figure(
-            go.Indicator(
-                mode="gauge+number",
-                value=current_aqi,
-                number={"font": {"size": 42, "color": current_color}},
-                gauge={
-                    "axis": {"range": [0, 300], "tickwidth": 1, "tickcolor": "#c9cfd8"},
-                    "bar": {"color": current_color, "thickness": 0.28},
-                    "bgcolor": "white",
-                    "borderwidth": 0,
-                    "steps": [
-                        {"range": [0, 50], "color": "rgba(0,176,80,0.13)"},
-                        {"range": [50, 100], "color": "rgba(212,166,0,0.13)"},
-                        {"range": [100, 150], "color": "rgba(224,122,0,0.13)"},
-                        {"range": [150, 200], "color": "rgba(224,36,36,0.13)"},
-                        {"range": [200, 300], "color": "rgba(143,63,151,0.13)"},
-                    ],
-                },
-                title={"text": f"{selected_name} · Current AQI", "font": {"size": 14, "color": "#6b7280"}},
-            )
-        )
-        st.plotly_chart(styled_plotly(gauge, height=260), use_container_width=True, config={"displayModeBar": False})
-        st.markdown(
-            f'<div style="text-align:center; margin-top:-1rem;">{badge_html(current_label, current_color)}</div>',
-            unsafe_allow_html=True,
-        )
+        with st.container(border=True):
+            info_col, gauge_col = st.columns([1.1, 1])
+            with info_col:
+                st.markdown(
+                    f"""<div class="eyebrow"><span class="material-symbols-outlined" style="font-size:15px;">location_on</span> {selected_name.upper()}</div>
+                    <div class="hero-card-title">Current Air Quality</div>
+                    <div class="hero-card-sub">{current_label}</div>
+                    <div class="delta-pill" style="background-color:{delta_color}1a; color:{delta_color};">
+                        <span class="material-symbols-outlined" style="font-size:15px; color:{delta_color};">{delta_icon}</span>
+                        {delta_text}
+                    </div>
+                    <div style="color:#9aa4b2; font-size:0.8rem; margin-top:0.8rem;">
+                        Updated at hour {datetime.now().strftime("%H:00")}
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+            with gauge_col:
+                gauge = go.Figure(
+                    go.Indicator(
+                        mode="gauge+number",
+                        value=current_aqi,
+                        number={"font": {"size": 34, "color": current_color}},
+                        gauge={
+                            "axis": {"range": [0, 300], "tickwidth": 1, "tickcolor": "#c9cfd8"},
+                            "bar": {"color": current_color, "thickness": 0.28},
+                            "bgcolor": "white",
+                            "borderwidth": 0,
+                            "steps": [
+                                {"range": [0, 50], "color": "rgba(0,176,80,0.13)"},
+                                {"range": [50, 100], "color": "rgba(212,166,0,0.13)"},
+                                {"range": [100, 150], "color": "rgba(224,122,0,0.13)"},
+                                {"range": [150, 200], "color": "rgba(224,36,36,0.13)"},
+                                {"range": [200, 300], "color": "rgba(143,63,151,0.13)"},
+                            ],
+                        },
+                    )
+                )
+                st.plotly_chart(styled_plotly(gauge, height=180), use_container_width=True, config={"displayModeBar": False})
 
     with top_right:
-        max_forecast = max(forecast[h] for h in HORIZONS)
-        if max_forecast > 150:
+        with st.container(border=True):
+            badge_col, spacer, pill_col = st.columns([1, 2, 2])
+            with badge_col:
+                st.markdown(
+                    f"""<div class="icon-badge" style="background-color:{current_color}1a;">
+                    <span class="material-symbols-outlined" style="color:{current_color}; font-size:22px;">shield</span>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
+            with pill_col:
+                st.markdown(
+                    f'<div style="text-align:right; margin-top:0.5rem;">{badge_html(current_label, current_color)}</div>',
+                    unsafe_allow_html=True,
+                )
             st.markdown(
-                f"""<div class="card" style="border-left: 4px solid #e02424;">
-                <div class="stat-label" style="color:#e02424;">⚠️ Air Quality Alert</div>
-                <div style="font-size:0.9rem; color:#374151; margin-top:0.3rem;">
-                Air quality is expected to reach unhealthy levels within the next 3 days.
-                </div></div>""",
+                f"""<div class="hero-card-title" style="margin-top:0.8rem;">{headline}</div>
+                <div class="hero-card-sub">{headline_desc}</div>""",
                 unsafe_allow_html=True,
             )
-        st.markdown(
-            f"""<div class="card" style="border-left: 4px solid {current_color};">
-            <div class="stat-label">Health Guidance</div>
-            <div style="font-size:0.9rem; color:#374151; margin-top:0.3rem; line-height:1.5;">
-            {health_guidance(current_aqi)}
-            </div></div>""",
-            unsafe_allow_html=True,
-        )
+            st.markdown(
+                f"""<div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151;">
+                <b>Health guidance:</b> {health_guidance(current_aqi)}
+                </div>""",
+                unsafe_allow_html=True,
+            )
+            max_forecast = max(forecast[h] for h in HORIZONS)
+            if max_forecast > 150:
+                st.markdown(
+                    """<div style="margin-top:0.7rem; color:#e02424; font-size:0.85rem; font-weight:600;">
+                    ⚠️ AQI is expected to reach unhealthy levels within the next 3 days.
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
 
     # --- Current pollutants ---
     st.markdown('<div class="section-title">Current Pollutants</div>', unsafe_allow_html=True)
