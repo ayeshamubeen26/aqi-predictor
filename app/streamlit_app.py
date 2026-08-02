@@ -245,6 +245,32 @@ def load_model_registry():
     return get_model_registry()
 
 
+@st.cache_data(ttl=900, show_spinner=False)
+def get_national_overview(_fs, _mr, cities):
+    """
+    Pulls current AQI for every monitored city in one pass, for the
+    national comparison view. Cached for 15 minutes (Streamlit reruns
+    the whole script on every interaction, so without caching, simply
+    switching the city dropdown would trigger a fresh live fetch across
+    all five cities every single time, five times the API load for no
+    reason since national conditions don't meaningfully change minute
+    to minute).
+    """
+    overview = []
+    for city in cities:
+        try:
+            result = predict_city_with_features(_fs, _mr, city)
+            if result is None:
+                continue
+            forecast, _, _ = result
+            aqi = forecast["current_aqi"]
+            color, label = aqi_color_and_label(aqi)
+            overview.append({"name": city["name"], "aqi": aqi, "color": color, "label": label})
+        except Exception:
+            continue
+    return overview
+
+
 fs = load_feature_store()
 mr = load_model_registry()
 
@@ -284,6 +310,39 @@ if refresh_clicked:
     st.rerun()
 
 selected_city = next(c for c in cities if c["name"] == selected_name)
+
+# --- National Overview: something a single-city dashboard can't offer ---
+st.markdown('<div class="section-title">National Overview</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-caption">Live AQI across all five monitored cities, ranked worst to best</div>', unsafe_allow_html=True)
+
+with st.spinner("Loading national comparison..."):
+    overview = get_national_overview(fs, mr, cities)
+
+if overview:
+    overview_sorted = sorted(overview, key=lambda c: c["aqi"], reverse=True)
+    bar_colors = [
+        "#1a1f29" if c["name"] == selected_name else c["color"]
+        for c in overview_sorted
+    ]
+    overview_fig = go.Figure(
+        go.Bar(
+            x=[c["aqi"] for c in overview_sorted],
+            y=[c["name"] for c in overview_sorted],
+            orientation="h",
+            marker_color=bar_colors,
+            text=[f"{c['aqi']:.0f} · {c['label']}" for c in overview_sorted],
+            textposition="outside",
+        )
+    )
+    overview_fig.update_layout(
+        yaxis=dict(autorange="reversed"),
+        xaxis_title="Current AQI",
+        margin=dict(l=10, r=80, t=10, b=10),
+    )
+    st.plotly_chart(styled_plotly(overview_fig, height=260), use_container_width=True, config={"displayModeBar": False})
+    st.caption(f"{selected_name} is highlighted in black. Select a different city above to explore its full forecast below.")
+else:
+    st.info("National comparison isn't available yet, not enough recent history for other cities.")
 
 with st.spinner(f"Fetching live data and forecasting for {selected_name}..."):
     result = predict_city_with_features(fs, mr, selected_city)
