@@ -118,6 +118,32 @@ st.markdown(
 )
 
 
+POLLUTANT_THRESHOLDS = {
+    "pm2_5": (55, "PM2.5"),
+    "pm10": (150, "PM10"),
+    "o3": (100, "Ozone (O₃)"),
+    "no2": (100, "Nitrogen Dioxide (NO₂)"),
+    "so2": (75, "Sulfur Dioxide (SO₂)"),
+    "co": (4000, "Carbon Monoxide (CO)"),
+}
+
+
+def primary_pollutant_driver(row):
+    """
+    Identifies which pollutant is proportionally furthest past its rough
+    unhealthy threshold, so guidance can name the actual driver in this
+    city right now instead of giving the same generic advice regardless
+    of which pollutant is actually the problem.
+    """
+    best_label, best_ratio, best_value = None, 0, 0
+    for col, (threshold, label) in POLLUTANT_THRESHOLDS.items():
+        value = row.get(col, 0)
+        ratio = value / threshold if threshold else 0
+        if ratio > best_ratio:
+            best_label, best_ratio, best_value = label, ratio, value
+    return best_label, best_value
+
+
 def aqi_color_and_label(aqi):
     if aqi <= 50:
         return "#15803d", "Good"
@@ -611,14 +637,30 @@ else:
                 st.plotly_chart(styled_plotly(shap_fig), use_container_width=True, key=f"shap_{horizon}", config={"displayModeBar": False})
                 st.caption("Red bars pushed the forecast higher, green bars pulled it lower.")
 
-    # --- Safety precautions, actionable checklist based on current severity ---
+    # --- Safety precautions, keyed to the worst predicted conditions ahead, not just the current moment ---
+    worst_horizon = max(HORIZONS, key=lambda h: forecast[h])
+    worst_value = forecast[worst_horizon]
+    worst_color, worst_label = aqi_color_and_label(worst_value)
+    worst_horizon_display = {"target_aqi_24h": "24 hours", "target_aqi_48h": "48 hours", "target_aqi_72h": "72 hours"}[worst_horizon]
+    driver_label, driver_value = primary_pollutant_driver(row)
+
     st.markdown('<div class="section-title">Safety Precautions</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-caption">What to do right now in {selected_name}, based on current conditions.</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="section-caption">Based on the worst air quality expected in {selected_name} over the next 3 days '
+        f'({worst_label}, predicted around {worst_horizon_display} from now).</div>',
+        unsafe_allow_html=True,
+    )
     with st.container(border=True):
-        for tip in safety_precautions(current_aqi):
+        if driver_label:
+            st.markdown(
+                f'<div style="font-size:0.85rem; color:#6b7280; margin-bottom:0.8rem;">'
+                f'<b>{driver_label}</b> is the main pollutant of concern right now ({driver_value:.1f} µg/m³).</div>',
+                unsafe_allow_html=True,
+            )
+        for tip in safety_precautions(worst_value):
             st.markdown(
                 f'<div style="display:flex; align-items:flex-start; gap:0.6rem; margin-bottom:0.6rem;">'
-                f'<span class="material-symbols-outlined" style="color:{current_color}; font-size:19px; margin-top:1px;">check_circle</span>'
+                f'<span class="material-symbols-outlined" style="color:{worst_color}; font-size:19px; margin-top:1px;">check_circle</span>'
                 f'<span style="font-size:0.9rem; color:#374151; line-height:1.4;">{tip}</span></div>',
                 unsafe_allow_html=True,
             )
