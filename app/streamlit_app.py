@@ -84,9 +84,9 @@ st.markdown(
     }
 
     .inner-stat {
-        background-color: #f4f6fb;
+        background-color: #e7edfb;
         border-radius: 12px;
-        padding: 0.75rem 0.9rem;
+        padding: 0.9rem 1.1rem;
         margin-bottom: 0.2rem;
     }
 
@@ -159,6 +159,17 @@ st.markdown(
         overflow: hidden;
         border-radius: 16px;
     }
+
+    /* Equal-height hero cards: Streamlit's columns don't stretch a bordered
+       container to match its sibling by default, so the shorter card (the
+       one with less text) ends up visibly shorter than the one next to it.
+       Making the column, its wrapper, and the block all height:100% inside
+       a stretch-aligned row forces both cards in that row to match the
+       tallest one. */
+    div[data-testid="stHorizontalBlock"] { align-items: stretch; }
+    div[data-testid="column"] > div { height: 100%; }
+    div[data-testid="stVerticalBlockBorderWrapper"] { height: 100%; }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] { height: 100%; }
     </style>
     """,
     unsafe_allow_html=True,
