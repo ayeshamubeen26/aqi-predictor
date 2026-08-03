@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from config import get_cities
 from feature_store import get_feature_store, get_model_registry
-from predict import predict_city_with_features, load_model, get_model_metrics, FEATURE_COLUMNS, HORIZONS
+from predict import predict_city_with_features, load_model, get_model_metrics, get_recent_history, FEATURE_COLUMNS, HORIZONS
 from explain import explain_prediction
 
 st.set_page_config(page_title="Pakistan AQI Forecast", page_icon="🌫️", layout="wide")
@@ -235,6 +235,43 @@ def aqi_headline(aqi):
         return "Health Emergency Conditions", "Air quality has reached hazardous levels affecting the entire population."
 
 
+def safety_precautions(aqi):
+    if aqi <= 50:
+        return ["Enjoy outdoor activities as normal.", "No special precautions needed."]
+    elif aqi <= 100:
+        return [
+            "Most people can continue normal outdoor activities.",
+            "Unusually sensitive individuals should watch for symptoms like coughing or shortness of breath.",
+        ]
+    elif aqi <= 150:
+        return [
+            "Sensitive groups (children, elderly, people with asthma or heart conditions) should reduce prolonged outdoor exertion.",
+            "Consider a well-fitted mask (N95/KN95) outdoors if you're in a sensitive group.",
+            "Keep quick-relief medication on hand if you have asthma.",
+        ]
+    elif aqi <= 200:
+        return [
+            "Everyone should limit prolonged or heavy outdoor exertion.",
+            "Wear a well-fitted N95/KN95 mask outdoors.",
+            "Keep windows closed, run an air purifier indoors if you have one.",
+            "Sensitive groups should stay indoors where possible.",
+        ]
+    elif aqi <= 300:
+        return [
+            "Avoid outdoor exertion entirely.",
+            "Wear a properly fitted N95/KN95 mask if you must go outside.",
+            "Keep windows and doors sealed, run an air purifier continuously if available.",
+            "Sensitive groups should remain indoors at all times.",
+        ]
+    else:
+        return [
+            "Avoid all outdoor activity.",
+            "Stay indoors with windows and doors sealed.",
+            "Run an air purifier continuously if available.",
+            "Seek medical attention if experiencing difficulty breathing.",
+        ]
+
+
 @st.cache_resource
 def load_feature_store():
     return get_feature_store()
@@ -311,39 +348,6 @@ if refresh_clicked:
 
 selected_city = next(c for c in cities if c["name"] == selected_name)
 
-# --- National Overview: something a single-city dashboard can't offer ---
-st.markdown('<div class="section-title">National Overview</div>', unsafe_allow_html=True)
-st.markdown('<div class="section-caption">Live AQI across all five monitored cities, ranked worst to best</div>', unsafe_allow_html=True)
-
-with st.spinner("Loading national comparison..."):
-    overview = get_national_overview(fs, mr, cities)
-
-if overview:
-    overview_sorted = sorted(overview, key=lambda c: c["aqi"], reverse=True)
-    bar_colors = [
-        "#1a1f29" if c["name"] == selected_name else c["color"]
-        for c in overview_sorted
-    ]
-    overview_fig = go.Figure(
-        go.Bar(
-            x=[c["aqi"] for c in overview_sorted],
-            y=[c["name"] for c in overview_sorted],
-            orientation="h",
-            marker_color=bar_colors,
-            text=[f"{c['aqi']:.0f} · {c['label']}" for c in overview_sorted],
-            textposition="outside",
-        )
-    )
-    overview_fig.update_layout(
-        yaxis=dict(autorange="reversed"),
-        xaxis_title="Current AQI",
-        margin=dict(l=10, r=80, t=10, b=10),
-    )
-    st.plotly_chart(styled_plotly(overview_fig, height=260), use_container_width=True, config={"displayModeBar": False})
-    st.caption(f"{selected_name} is highlighted in black. Select a different city above to explore its full forecast below.")
-else:
-    st.info("National comparison isn't available yet, not enough recent history for other cities.")
-
 with st.spinner(f"Fetching live data and forecasting for {selected_name}..."):
     result = predict_city_with_features(fs, mr, selected_city)
 
@@ -417,9 +421,7 @@ else:
             badge_col, spacer, pill_col = st.columns([1, 2, 2])
             with badge_col:
                 st.markdown(
-                    f"""<div class="icon-badge" style="background-color:{current_color}1a;">
-                    <span class="material-symbols-outlined" style="color:{current_color}; font-size:22px;">shield</span>
-                    </div>""",
+                    f'<div class="icon-badge" style="background-color:{current_color}1a;"><span class="material-symbols-outlined" style="color:{current_color}; font-size:22px;">shield</span></div>',
                     unsafe_allow_html=True,
                 )
             with pill_col:
@@ -429,21 +431,14 @@ else:
                 )
             st.markdown(
                 f"""<div class="hero-card-title" style="margin-top:0.8rem;">{headline}</div>
-                <div class="hero-card-sub">{headline_desc}</div>""",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"""<div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151;">
-                <b>Health guidance:</b> {health_guidance(current_aqi)}
-                </div>""",
+                <div class="hero-card-sub">{headline_desc}</div>
+                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
             if max_forecast > 150:
                 st.markdown(
-                    """<div style="margin-top:0.7rem; color:#e02424; font-size:0.85rem; font-weight:600;">
-                    ⚠️ AQI is expected to reach unhealthy levels within the next 3 days.
-                    </div>""",
+                    '<div style="margin-top:0.7rem; color:#e02424; font-size:0.85rem; font-weight:600;">⚠️ AQI is expected to reach unhealthy levels within the next 3 days.</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -615,3 +610,83 @@ else:
                 )
                 st.plotly_chart(styled_plotly(shap_fig), use_container_width=True, key=f"shap_{horizon}", config={"displayModeBar": False})
                 st.caption("Red bars pushed the forecast higher, green bars pulled it lower.")
+
+    # --- Safety precautions, actionable checklist based on current severity ---
+    st.markdown('<div class="section-title">Safety Precautions</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-caption">What to do right now in {selected_name}, based on current conditions.</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        for tip in safety_precautions(current_aqi):
+            st.markdown(
+                f'<div style="display:flex; align-items:flex-start; gap:0.6rem; margin-bottom:0.6rem;">'
+                f'<span class="material-symbols-outlined" style="color:{current_color}; font-size:19px; margin-top:1px;">check_circle</span>'
+                f'<span style="font-size:0.9rem; color:#374151; line-height:1.4;">{tip}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+    # --- Forecast accuracy backtest: real predicted-vs-actual over recent history ---
+    st.markdown('<div class="section-title">Forecast Accuracy Over Time</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-caption">The 24h model\'s predictions made at each past hour, compared to what AQI actually turned out to be.</div>',
+        unsafe_allow_html=True,
+    )
+    extended_hist = get_recent_history(fs, selected_name, hours=120)
+    X_hist = extended_hist[FEATURE_COLUMNS].dropna()
+    if len(X_hist) >= 10:
+        model_24h_bt = load_model(mr, "target_aqi_24h")
+        preds = model_24h_bt.predict(X_hist)
+        pred_times = extended_hist.loc[X_hist.index, "timestamp"] + pd.Timedelta(hours=24)
+
+        bt_fig = go.Figure()
+        bt_fig.add_trace(
+            go.Scatter(
+                x=extended_hist["timestamp"], y=extended_hist["aqi"],
+                mode="lines", name="Actual AQI",
+                line=dict(color="#2563eb", width=2.5),
+            )
+        )
+        bt_fig.add_trace(
+            go.Scatter(
+                x=pred_times, y=preds,
+                mode="lines", name="Predicted (24h ahead)",
+                line=dict(color="#e07a00", width=2, dash="dot"),
+            )
+        )
+        bt_fig.update_layout(yaxis_title="AQI", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+        st.plotly_chart(styled_plotly(bt_fig, height=340), use_container_width=True, config={"displayModeBar": False})
+        st.caption("Dotted orange shows what the model predicted 24 hours in advance for each point in time, plotted against the solid blue actual reading at that same time.")
+    else:
+        st.info("Not enough historical data yet to show a backtest for this city.")
+
+# --- National Overview: something a single-city dashboard can't offer, shown regardless of the selected city's own data availability ---
+st.markdown('<div class="section-title">National Overview</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-caption">Live AQI across all five monitored cities, ranked worst to best</div>', unsafe_allow_html=True)
+
+with st.container(border=True):
+    with st.spinner("Loading national comparison..."):
+        overview = get_national_overview(fs, mr, cities)
+
+    if overview:
+        overview_sorted = sorted(overview, key=lambda c: c["aqi"], reverse=True)
+        bar_colors = [
+            "#1a1f29" if c["name"] == selected_name else c["color"]
+            for c in overview_sorted
+        ]
+        overview_fig = go.Figure(
+            go.Bar(
+                x=[c["aqi"] for c in overview_sorted],
+                y=[c["name"] for c in overview_sorted],
+                orientation="h",
+                marker_color=bar_colors,
+                text=[f"{c['aqi']:.0f} · {c['label']}" for c in overview_sorted],
+                textposition="outside",
+            )
+        )
+        overview_fig.update_layout(
+            yaxis=dict(autorange="reversed"),
+            xaxis_title="Current AQI",
+            margin=dict(l=10, r=80, t=10, b=10),
+        )
+        st.plotly_chart(styled_plotly(overview_fig, height=260), use_container_width=True, config={"displayModeBar": False})
+        st.caption(f"{selected_name} is highlighted in black. Use the dropdown near the top of the page to explore a different city.")
+    else:
+        st.info("National comparison isn't available yet, not enough recent history for other cities.")
