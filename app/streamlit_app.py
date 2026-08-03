@@ -88,7 +88,7 @@ st.markdown(
 
     .eyebrow { color: #6b7280; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-bottom: 0.3rem; }
     .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; }
-    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0.9rem; }
+    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0.3rem; }
     .delta-pill {
         display: inline-flex; align-items: center; gap: 3px;
         padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
@@ -120,17 +120,17 @@ st.markdown(
 
 def aqi_color_and_label(aqi):
     if aqi <= 50:
-        return "#00b050", "Good"
+        return "#15803d", "Good"
     elif aqi <= 100:
-        return "#d4a600", "Moderate"
+        return "#b45309", "Moderate"
     elif aqi <= 150:
-        return "#e07a00", "Unhealthy for Sensitive Groups"
+        return "#c2410c", "Unhealthy for Sensitive Groups"
     elif aqi <= 200:
-        return "#e02424", "Unhealthy"
+        return "#b91c1c", "Unhealthy"
     elif aqi <= 300:
-        return "#8f3f97", "Very Unhealthy"
+        return "#7e22ce", "Very Unhealthy"
     else:
-        return "#7e0023", "Hazardous"
+        return "#7f1d1d", "Hazardous"
 
 
 FEATURE_LABELS = {
@@ -367,9 +367,9 @@ else:
     prev_aqi = history_df["aqi"].iloc[-1] if len(history_df) else current_aqi
     delta = current_aqi - prev_aqi
     if delta < 0:
-        delta_color, delta_icon, delta_text = "#00b050", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
+        delta_color, delta_icon, delta_text = "#15803d", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
     elif delta > 0:
-        delta_color, delta_icon, delta_text = "#e02424", "trending_up", f"{abs(delta):.0f} points · Worsening vs previous reading"
+        delta_color, delta_icon, delta_text = "#b91c1c", "trending_up", f"{abs(delta):.0f} points · Worsening vs previous reading"
     else:
         delta_color, delta_icon, delta_text = "#6b7280", "trending_flat", "No change vs previous reading"
 
@@ -405,11 +405,11 @@ else:
                             "bgcolor": "white",
                             "borderwidth": 0,
                             "steps": [
-                                {"range": [0, 50], "color": "rgba(0,176,80,0.13)"},
-                                {"range": [50, 100], "color": "rgba(212,166,0,0.13)"},
-                                {"range": [100, 150], "color": "rgba(224,122,0,0.13)"},
-                                {"range": [150, 200], "color": "rgba(224,36,36,0.13)"},
-                                {"range": [200, 300], "color": "rgba(143,63,151,0.13)"},
+                                {"range": [0, 50], "color": "rgba(21,128,61,0.13)"},
+                                {"range": [50, 100], "color": "rgba(180,83,9,0.13)"},
+                                {"range": [100, 150], "color": "rgba(194,65,12,0.13)"},
+                                {"range": [150, 200], "color": "rgba(185,28,28,0.13)"},
+                                {"range": [200, 300], "color": "rgba(126,34,206,0.13)"},
                             ],
                         },
                     )
@@ -438,7 +438,7 @@ else:
             max_forecast = max(forecast[h] for h in HORIZONS)
             if max_forecast > 150:
                 st.markdown(
-                    '<div style="margin-top:0.7rem; color:#e02424; font-size:0.85rem; font-weight:600;">⚠️ AQI is expected to reach unhealthy levels within the next 3 days.</div>',
+                    '<div style="margin-top:0.7rem; color:#b91c1c; font-size:0.85rem; font-weight:600;">⚠️ AQI is expected to reach unhealthy levels within the next 3 days.</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -600,7 +600,7 @@ else:
                         x=top_contributions.values,
                         y=readable_labels,
                         orientation="h",
-                        marker_color=["#e02424" if v > 0 else "#00b050" for v in top_contributions.values],
+                        marker_color=["#b91c1c" if v > 0 else "#15803d" for v in top_contributions.values],
                     )
                 )
                 shap_fig.update_layout(
@@ -648,7 +648,7 @@ else:
             go.Scatter(
                 x=pred_times, y=preds,
                 mode="lines", name="Predicted (24h ahead)",
-                line=dict(color="#e07a00", width=2, dash="dot"),
+                line=dict(color="#c2410c", width=2, dash="dot"),
             )
         )
         bt_fig.update_layout(yaxis_title="AQI", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
