@@ -86,7 +86,7 @@ st.markdown(
     .inner-stat {
         background-color: #f4f6fb;
         border-radius: 12px;
-        padding: 0.75rem 0.9rem;
+        padding: 0.9rem 1.1rem;
         margin-bottom: 0.2rem;
     }
 
