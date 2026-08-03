@@ -150,6 +150,11 @@ st.markdown(
     div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] { gap: 0.35rem; }
     div[data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; }
 
+    /* Give bordered Streamlit containers (the hero cards) real breathing
+       room at the bottom instead of letting the last element (the
+       health-guidance box) sit flush against the card's own edge. */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.6rem; }
+
     /* Bordered containers (st.container(border=True)) don't clip their own
        content by default, so a full-width inner box (like the health
        guidance panel) can visually spill past the container's rounded
@@ -516,7 +521,7 @@ else:
             st.markdown(
                 f"""<div class="hero-card-title">{headline}</div>
                 <div class="hero-card-sub">{headline_desc}</div>
-                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
+                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem; margin-bottom:0.2rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
