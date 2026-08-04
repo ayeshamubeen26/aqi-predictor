@@ -13,6 +13,40 @@ from explain import explain_prediction
 st.set_page_config(page_title="Pakistan AQI Forecast", page_icon="🌫️", layout="wide")
 
 # ---------------------------------------------------------------------------
+# Icon system: small inline SVGs instead of an external icon font. A webfont
+# ligature (e.g. "shield") that fails to load or render falls back to raw
+# text in the browser's default font/size, which is what produced the
+# oversized, wrongly-colored, overflowing glyph in the UI. Inline SVG has no
+# network dependency and always renders at the exact size/color requested.
+# ---------------------------------------------------------------------------
+ICONS = {
+    "shield": '<path d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3z"/>',
+    "eco": '<path d="M5 21c9 0 14-5 14-14V4h-3C7 4 3 9 3 15v6z"/><path d="M5 21c4-4 8-8 14-14"/>',
+    "location_on": '<path d="M12 21s7-6.6 7-12a7 7 0 1 0-14 0c0 5.4 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+    "trending_down": '<path d="M4 7l7 7 4-4 5 5"/><path d="M15 15h5v-5"/>',
+    "trending_up": '<path d="M4 17l7-7 4 4 5-5"/><path d="M15 9h5v5"/>',
+    "trending_flat": '<path d="M4 12h16"/><path d="M15 8l4 4-4 4"/>',
+    "thermostat": '<path d="M12 14.5V5a2 2 0 1 0-4 0v9.5a4 4 0 1 0 4 0z"/>',
+    "water_drop": '<path d="M12 3s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11z"/>',
+    "air": '<path d="M4 8h11a2.5 2.5 0 1 0-2.5-2.5"/><path d="M4 12h14a2.5 2.5 0 1 1-2.5 2.5"/><path d="M4 16h8a2 2 0 1 1-2 2"/>',
+    "blur_on": '<circle cx="6" cy="6" r="1.4"/><circle cx="12" cy="6" r="1.4"/><circle cx="18" cy="6" r="1.4"/><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/><circle cx="6" cy="18" r="1.4"/><circle cx="12" cy="18" r="1.4"/><circle cx="18" cy="18" r="1.4"/>',
+    "grain": '<circle cx="7" cy="7" r="1.3"/><circle cx="17" cy="7" r="1.3"/><circle cx="7" cy="17" r="1.3"/><circle cx="17" cy="17" r="1.3"/><circle cx="12" cy="12" r="1.3"/>',
+    "science": '<path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/>',
+    "cloud": '<path d="M7 18a4 4 0 1 1 .7-7.9A5 5 0 0 1 17 11a3.5 3.5 0 0 1-.5 7H7z"/>',
+    "check_circle": '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+}
+
+
+def icon_svg(name, color="currentColor", size=20, stroke_width=2):
+    inner = ICONS.get(name, "")
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
+        f'stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" '
+        f'stroke-linejoin="round" style="vertical-align:middle;flex-shrink:0;">{inner}</svg>'
+    )
+
+
+# ---------------------------------------------------------------------------
 # Styling: light, card-based theme with soft shadows instead of borders,
 # closer to a hand-built product dashboard than Streamlit's plain default.
 # ---------------------------------------------------------------------------
@@ -20,16 +54,11 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    @import url('https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined');
-
-    .material-symbols-outlined {
-        font-family: 'Material Symbols Outlined';
-        font-size: 20px;
-        vertical-align: middle;
-        color: #6b7280;
-    }
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+    /* Page background: soft slate tint instead of stark white */
+    .stApp { background-color: #eef1f6; }
 
     .block-container { padding-top: 3.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
 
@@ -38,30 +67,30 @@ st.markdown(
 
     .card {
         background-color: #ffffff;
-        border: 2px solid #d5dbe1;
+        border: 1px solid #e4e8f0;
         border-radius: 16px;
         padding: 1.1rem 1.3rem;
         margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.06);
     }
 
     .group-card {
         background-color: #ffffff;
-        border: 1px solid #eef0f3;
+        border: 1px solid #e4e8f0;
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
         margin-bottom: 1.2rem;
-        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.06);
     }
 
     .inner-stat {
-        background-color: #f8f9fb;
-        border: 2px solid #e2e6eb;
+        background-color: #e7edfb;
         border-radius: 12px;
         padding: 0.9rem 1.1rem;
+        margin-bottom: 0.2rem;
     }
 
-    .stat-label { color: #6b7280; font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+    .stat-label { color: #6b7280; font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 4px; }
     .stat-value { font-size: 1.4rem; font-weight: 700; color: #1a1f29; }
     .stat-sub { color: #9aa4b2; font-size: 0.8rem; margin-top: 0.15rem; }
 
@@ -69,16 +98,12 @@ st.markdown(
     .section-caption { color: #6b7280; font-size: 0.85rem; margin-bottom: 0.8rem; }
 
     .badge {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
         padding: 2px 11px;
         border-radius: 999px;
         font-size: 0.72rem;
         font-weight: 700;
-    }
-
-    div[data-testid="stVerticalBlockBorderWrapper"] > div {
-        border: 2px solid #d5dbe1 !important;
-        border-radius: 16px !important;
     }
 
     div[data-testid="stSelectbox"] label { font-weight: 600; color: #1a1f29; }
@@ -93,8 +118,8 @@ st.markdown(
     .nav-meta { color: #6b7280; font-size: 0.82rem; display: flex; align-items: center; gap: 1.1rem; }
 
     .eyebrow { color: #6b7280; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-bottom: 0.3rem; }
-    .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; }
-    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0; }
+    .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; margin-top: 0.35rem; }
+    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0.3rem; }
     .delta-pill {
         display: inline-flex; align-items: center; gap: 3px;
         padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
@@ -103,7 +128,7 @@ st.markdown(
     /* Restyle Streamlit's native tabs as rounded pill buttons */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
-        background-color: #f1f2f5;
+        background-color: #e9edf5;
         padding: 4px;
         border-radius: 999px;
         width: fit-content;
@@ -116,8 +141,35 @@ st.markdown(
     }
     .stTabs [aria-selected="true"] {
         background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1);
+        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.1);
     }
+
+    /* Tighten Streamlit's default column/element vertical gaps inside cards
+       so icon rows and titles sit close together instead of leaving a
+       visible band of empty space. */
+    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] { gap: 0.35rem; }
+    div[data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; }
+
+    /* Bordered containers (st.container(border=True)) don't clip their own
+       content by default, so a full-width inner box (like the health
+       guidance panel) can visually spill past the container's rounded
+       corners instead of being cropped to match them. Clipping to the
+       border radius here fixes that without touching any content. */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        overflow: hidden;
+        border-radius: 16px;
+    }
+
+    /* Equal-height hero cards: Streamlit's columns don't stretch a bordered
+       container to match its sibling by default, so the shorter card (the
+       one with less text) ends up visibly shorter than the one next to it.
+       Making the column, its wrapper, and the block all height:100% inside
+       a stretch-aligned row forces both cards in that row to match the
+       tallest one. */
+    div[data-testid="stHorizontalBlock"] { align-items: stretch; }
+    div[data-testid="column"] > div { height: 100%; }
+    div[data-testid="stVerticalBlockBorderWrapper"] { height: 100%; }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] { height: 100%; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -152,7 +204,7 @@ def primary_pollutant_driver(row):
 
 def aqi_color_and_label(aqi):
     if aqi <= 50:
-        return "#15803d", "Good"
+        return "#0f766e", "Good"
     elif aqi <= 100:
         return "#b45309", "Moderate"
     elif aqi <= 150:
@@ -160,7 +212,7 @@ def aqi_color_and_label(aqi):
     elif aqi <= 200:
         return "#b91c1c", "Unhealthy"
     elif aqi <= 300:
-        return "#7e22ce", "Very Unhealthy"
+        return "#6d28d9", "Very Unhealthy"
     else:
         return "#7f1d1d", "Hazardous"
 
@@ -215,7 +267,7 @@ def badge_html(label, color):
 
 def stat_card(label, value, unit="", sub=None, icon=None):
     sub_html = f'<div class="stat-sub">{sub}</div>' if sub else ""
-    icon_html = f'<span class="material-symbols-outlined">{icon}</span> ' if icon else ""
+    icon_html = f'{icon_svg(icon, color="#6b7280", size=15)} ' if icon else ""
     st.markdown(
         f"""<div class="card"><div class="stat-label">{icon_html}{label}</div>
         <div class="stat-value">{value}{unit}</div>{sub_html}</div>""",
@@ -231,8 +283,8 @@ def styled_plotly(fig, height=380):
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", color="#1a1f29"),
         margin=dict(l=10, r=10, t=45, b=10),
-        xaxis=dict(gridcolor="#eef0f3", zerolinecolor="#eef0f3"),
-        yaxis=dict(gridcolor="#eef0f3", zerolinecolor="#eef0f3"),
+        xaxis=dict(gridcolor="#e4e8f0", zerolinecolor="#e4e8f0"),
+        yaxis=dict(gridcolor="#e4e8f0", zerolinecolor="#e4e8f0"),
     )
     return fig
 
@@ -349,11 +401,11 @@ city_names = [c["name"] for c in cities]
 nav_left, nav_right = st.columns([2, 1.6])
 with nav_left:
     st.markdown(
-        """
+        f"""
         <div class="nav-bar">
             <div class="nav-left">
-                <div class="icon-badge" style="background-color:#dcfce7;">
-                    <span class="material-symbols-outlined" style="color:#16a34a; font-size:24px;">eco</span>
+                <div class="icon-badge" style="background-color:#d6e9e6;">
+                    {icon_svg('eco', color='#0f766e', size=22)}
                 </div>
                 <div>
                     <div style="font-size:1.3rem; font-weight:800; color:#1a1f29; line-height:1.1;">AQI Prediction</div>
@@ -399,7 +451,7 @@ else:
     prev_aqi = history_df["aqi"].iloc[-1] if len(history_df) else current_aqi
     delta = current_aqi - prev_aqi
     if delta < 0:
-        delta_color, delta_icon, delta_text = "#15803d", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
+        delta_color, delta_icon, delta_text = "#0f766e", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
     elif delta > 0:
         delta_color, delta_icon, delta_text = "#b91c1c", "trending_up", f"{abs(delta):.0f} points · Worsening vs previous reading"
     else:
@@ -413,11 +465,11 @@ else:
             info_col, gauge_col = st.columns([1.1, 1])
             with info_col:
                 st.markdown(
-                    f"""<div class="eyebrow"><span class="material-symbols-outlined" style="font-size:15px;">location_on</span> {selected_name.upper()}</div>
+                    f"""<div class="eyebrow">{icon_svg('location_on', size=15)} {selected_name.upper()}</div>
                     <div class="hero-card-title">Current Air Quality</div>
                     <div class="hero-card-sub">{current_label}</div>
                     <div class="delta-pill" style="background-color:{delta_color}1a; color:{delta_color};">
-                        <span class="material-symbols-outlined" style="font-size:15px; color:{delta_color};">{delta_icon}</span>
+                        {icon_svg(delta_icon, color=delta_color, size=15)}
                         {delta_text}
                     </div>
                     <div style="color:#9aa4b2; font-size:0.8rem; margin-top:0.8rem;">
@@ -437,11 +489,11 @@ else:
                             "bgcolor": "white",
                             "borderwidth": 0,
                             "steps": [
-                                {"range": [0, 50], "color": "rgba(21,128,61,0.13)"},
+                                {"range": [0, 50], "color": "rgba(15,118,110,0.13)"},
                                 {"range": [50, 100], "color": "rgba(180,83,9,0.13)"},
                                 {"range": [100, 150], "color": "rgba(194,65,12,0.13)"},
                                 {"range": [150, 200], "color": "rgba(185,28,28,0.13)"},
-                                {"range": [200, 300], "color": "rgba(126,34,206,0.13)"},
+                                {"range": [200, 300], "color": "rgba(109,40,217,0.13)"},
                             ],
                         },
                     )
@@ -453,7 +505,7 @@ else:
             badge_col, spacer, pill_col = st.columns([1, 2, 2])
             with badge_col:
                 st.markdown(
-                    f'<div class="icon-badge" style="background-color:{current_color}1a;"><span class="material-symbols-outlined" style="color:{current_color}; font-size:22px;">shield</span></div>',
+                    f'<div class="icon-badge" style="background-color:{current_color}1a;">{icon_svg("shield", color=current_color, size=22)}</div>',
                     unsafe_allow_html=True,
                 )
             with pill_col:
@@ -462,9 +514,9 @@ else:
                     unsafe_allow_html=True,
                 )
             st.markdown(
-                f"""<div class="hero-card-title" style="margin-top:0.8rem;">{headline}</div>
+                f"""<div class="hero-card-title">{headline}</div>
                 <div class="hero-card-sub">{headline_desc}</div>
-                <div class="inner-stat" style="line-height:1.4; font-size:0.85rem; color:#374151; margin-top:0; padding:0.6rem 0.85rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
+                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
@@ -552,8 +604,8 @@ else:
     trend2 = go.Figure(
         go.Scatter(
             x=horizon_labels, y=horizon_values, mode="lines+markers",
-            line=dict(width=3, color="#0d9488"), marker=dict(size=9, color="#0d9488"),
-            fill="tozeroy", fillcolor="rgba(13,148,136,0.08)",
+            line=dict(width=3, color="#2563eb"), marker=dict(size=9, color="#2563eb"),
+            fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
         )
     )
     st.plotly_chart(styled_plotly(trend2, height=320), use_container_width=True, config={"displayModeBar": False})
@@ -632,7 +684,7 @@ else:
                         x=top_contributions.values,
                         y=readable_labels,
                         orientation="h",
-                        marker_color=["#b91c1c" if v > 0 else "#15803d" for v in top_contributions.values],
+                        marker_color=["#b91c1c" if v > 0 else "#0f766e" for v in top_contributions.values],
                     )
                 )
                 shap_fig.update_layout(
@@ -666,7 +718,7 @@ else:
         for tip in safety_precautions(worst_value):
             st.markdown(
                 f'<div style="display:flex; align-items:flex-start; gap:0.6rem; margin-bottom:0.6rem;">'
-                f'<span class="material-symbols-outlined" style="color:{worst_color}; font-size:19px; margin-top:1px;">check_circle</span>'
+                f'{icon_svg("check_circle", color=worst_color, size=19)}'
                 f'<span style="font-size:0.9rem; color:#374151; line-height:1.4;">{tip}</span></div>',
                 unsafe_allow_html=True,
             )
