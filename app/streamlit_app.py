@@ -38,7 +38,7 @@ st.markdown(
 
     .card {
         background-color: #ffffff;
-        border: 1px solid #eef0f3;
+        border: 2px solid #d5dbe1;
         border-radius: 16px;
         padding: 1.1rem 1.3rem;
         margin-bottom: 1rem;
@@ -56,6 +56,7 @@ st.markdown(
 
     .inner-stat {
         background-color: #f8f9fb;
+        border: 2px solid #e2e6eb;
         border-radius: 12px;
         padding: 0.9rem 1.1rem;
     }
@@ -75,6 +76,11 @@ st.markdown(
         font-weight: 700;
     }
 
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        border: 2px solid #d5dbe1 !important;
+        border-radius: 16px !important;
+    }
+
     div[data-testid="stSelectbox"] label { font-weight: 600; color: #1a1f29; }
 
     .nav-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.6rem; }
@@ -88,7 +94,7 @@ st.markdown(
 
     .eyebrow { color: #6b7280; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-bottom: 0.3rem; }
     .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; }
-    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0.3rem; }
+    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0; }
     .delta-pill {
         display: inline-flex; align-items: center; gap: 3px;
         padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
@@ -458,7 +464,7 @@ else:
             st.markdown(
                 f"""<div class="hero-card-title" style="margin-top:0.8rem;">{headline}</div>
                 <div class="hero-card-sub">{headline_desc}</div>
-                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
+                <div class="inner-stat" style="line-height:1.4; font-size:0.85rem; color:#374151; margin-top:0; padding:0.6rem 0.85rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
@@ -546,8 +552,8 @@ else:
     trend2 = go.Figure(
         go.Scatter(
             x=horizon_labels, y=horizon_values, mode="lines+markers",
-            line=dict(width=3, color="#2563eb"), marker=dict(size=9, color="#2563eb"),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
+            line=dict(width=3, color="#0d9488"), marker=dict(size=9, color="#0d9488"),
+            fill="tozeroy", fillcolor="rgba(13,148,136,0.08)",
         )
     )
     st.plotly_chart(styled_plotly(trend2, height=320), use_container_width=True, config={"displayModeBar": False})
