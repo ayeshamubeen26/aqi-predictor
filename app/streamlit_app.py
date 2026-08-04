@@ -148,28 +148,39 @@ st.markdown(
        so icon rows and titles sit close together instead of leaving a
        visible band of empty space. */
     div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] { gap: 0.35rem; }
-    div[data-testid="column"] { display: flex; flex-direction: column; justify-content: flex-start; }
 
-    /* Bordered containers (st.container(border=True)) don't clip their own
-       content by default, so a full-width inner box (like the health
-       guidance panel) can visually spill past the container's rounded
-       corners instead of being cropped to match them. Clipping to the
-       border radius here fixes that without touching any content. */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
+    /* Give bordered Streamlit containers (the hero cards) real breathing
+       room at the bottom instead of letting the last element (the
+       health-guidance box) sit flush against the card's own edge. */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.6rem; }
+
+    /* Equal-height hero cards, scoped ONLY to the two-card row above (via
+       the explicit key= given to each st.container, which Streamlit turns
+       into an "st-key-..." class on that exact wrapper div). Scoping with
+       :has() means this never touches any other st.container on the page.
+       Within that scope only, every descendant div is forced to height:
+       100%, which is a blunt instrument but a reliable one: it doesn't
+       matter how many unlabeled wrapper divs Streamlit inserts between a
+       column and the bordered container inside it (that's what silently
+       broke the previous, narrower version of this rule and let the right
+       card's content spill past its own shorter border), because every
+       level in the chain now explicitly has height:100% rather than
+       relying on a couple of levels I guessed at. */
+    div[data-testid="stHorizontalBlock"]:has([class*="st-key-hero_current_card"]) {
+        align-items: stretch;
+    }
+    div[data-testid="stHorizontalBlock"]:has([class*="st-key-hero_current_card"]) > div[data-testid="column"] {
+        display: flex;
+    }
+    div[data-testid="stHorizontalBlock"]:has([class*="st-key-hero_current_card"]) > div[data-testid="column"] div {
+        height: 100%;
+    }
+    [class*="st-key-hero_current_card"], [class*="st-key-hero_status_card"] {
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
         border-radius: 16px;
     }
-
-    /* Equal-height hero cards: Streamlit's columns don't stretch a bordered
-       container to match its sibling by default, so the shorter card (the
-       one with less text) ends up visibly shorter than the one next to it.
-       Making the column, its wrapper, and the block all height:100% inside
-       a stretch-aligned row forces both cards in that row to match the
-       tallest one. */
-    div[data-testid="stHorizontalBlock"] { align-items: stretch; }
-    div[data-testid="column"] > div { height: 100%; }
-    div[data-testid="stVerticalBlockBorderWrapper"] { height: 100%; }
-    div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] { height: 100%; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -461,7 +472,7 @@ else:
     top_left, top_right = st.columns([1, 1])
 
     with top_left:
-        with st.container(border=True):
+        with st.container(border=True, key="hero_current_card"):
             info_col, gauge_col = st.columns([1.1, 1])
             with info_col:
                 st.markdown(
@@ -501,7 +512,7 @@ else:
                 st.plotly_chart(styled_plotly(gauge, height=180), use_container_width=True, config={"displayModeBar": False})
 
     with top_right:
-        with st.container(border=True):
+        with st.container(border=True, key="hero_status_card"):
             badge_col, spacer, pill_col = st.columns([1, 2, 2])
             with badge_col:
                 st.markdown(
@@ -516,7 +527,7 @@ else:
             st.markdown(
                 f"""<div class="hero-card-title">{headline}</div>
                 <div class="hero-card-sub">{headline_desc}</div>
-                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
+                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem; margin-bottom:0.2rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
