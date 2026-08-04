@@ -500,6 +500,17 @@ else:
     else:
         delta_color, delta_icon, delta_text = "#6b7280", "trending_flat", "No change vs previous reading"
 
+    # Computed early (rather than down by Safety Precautions, where this
+    # used to live) so the hero cards can also draw on the same driver /
+    # outlook context instead of just showing bare numbers.
+    driver_label, driver_value = primary_pollutant_driver(row)
+    worst_horizon = max(HORIZONS, key=lambda h: forecast[h])
+    worst_value = forecast[worst_horizon]
+    worst_color, worst_label = aqi_color_and_label(worst_value)
+    worst_horizon_display = {"target_aqi_24h": "24 hours", "target_aqi_48h": "48 hours", "target_aqi_72h": "72 hours"}[worst_horizon]
+    who_pm25_guideline = 15  # WHO annual air quality guideline for PM2.5, µg/m³
+    pm25_ratio = row["pm2_5"] / who_pm25_guideline if who_pm25_guideline else 0
+
     # --- Hero: two cards side by side ---
     top_left, top_right = st.columns([1, 1])
 
@@ -517,6 +528,7 @@ else:
         with st.container(border=True, key="hero_current_card"):
             info_col, gauge_col = st.columns([1.1, 1])
             with info_col:
+                hist_min, hist_max = history_df["aqi"].min(), history_df["aqi"].max()
                 st.markdown(
                     f"""<div class="eyebrow">{icon_svg('location_on', size=15)} {selected_name.upper()}</div>
                     <div class="hero-card-title">Current Air Quality</div>
@@ -527,6 +539,10 @@ else:
                     </div>
                     <div style="color:#9aa4b2; font-size:0.8rem; margin-top:0.8rem;">
                         Updated at hour {datetime.now().strftime("%H:00")}
+                    </div>
+                    <div style="color:#4b5563; font-size:0.82rem; line-height:1.5; margin-top:0.7rem;">
+                        {driver_label + " is the main contributor right now, at " + f"{driver_value:.1f} µg/m³, " if driver_label else ""}roughly {pm25_ratio:.1f}× the WHO annual guideline for PM2.5 (15 µg/m³).<br>
+                        AQI has ranged from {hist_min:.0f} to {hist_max:.0f} over the past 24 hours.
                     </div>""",
                     unsafe_allow_html=True,
                 )
@@ -575,7 +591,11 @@ else:
             st.markdown(
                 f"""<div class="hero-card-title">{headline}</div>
                 <div class="hero-card-sub">{headline_desc}</div>
-                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151; margin-top:0.3rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
+                <div style="color:#4b5563; font-size:0.82rem; line-height:1.5; margin-top:0.4rem; margin-bottom:0.6rem;">
+                    Forecast to reach <b style="color:{worst_color};">{worst_label}</b> within the next {worst_horizon_display}.<br>
+                    {"This would mark a shift from today's conditions." if worst_label != current_label else "This stays consistent with today's conditions."}
+                </div>
+                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
@@ -659,13 +679,10 @@ else:
                 unsafe_allow_html=True,
             )
 
-    # --- Safety precautions, keyed to the worst predicted conditions ahead, not just the current moment ---
-    worst_horizon = max(HORIZONS, key=lambda h: forecast[h])
-    worst_value = forecast[worst_horizon]
-    worst_color, worst_label = aqi_color_and_label(worst_value)
-    worst_horizon_display = {"target_aqi_24h": "24 hours", "target_aqi_48h": "48 hours", "target_aqi_72h": "72 hours"}[worst_horizon]
-    driver_label, driver_value = primary_pollutant_driver(row)
-
+    # --- Safety precautions, keyed to the worst predicted conditions ahead
+    #     (worst_horizon / driver_label etc. were already computed above,
+    #     alongside the hero cards, so they're reused here rather than
+    #     recomputed) ---
     st.markdown('<div class="section-title">Safety Precautions</div>', unsafe_allow_html=True)
     st.markdown(
         f'<div class="section-caption">Based on the worst air quality expected in {selected_name} over the next 3 days '
