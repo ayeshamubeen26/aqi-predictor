@@ -64,11 +64,16 @@ st.markdown(
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    /* Page background: a dawn-sky style gradient (sky blue → soft violet →
-       warm pink) instead of a flat/muted tint — a livelier base for the
-       whole page that still stays pale enough not to fight the cards. */
+    /* Page background: layered color "glow" blobs (sky blue, violet, pink)
+       over a light gradient base — more of an actual aurora-style backdrop
+       than a flat tint, for real vibrancy rather than a subtle wash. Cards
+       stay solid white on top so none of this fights legibility. */
     .stApp {
-        background: linear-gradient(160deg, #eaf4ff 0%, #eef1fd 30%, #f3edfb 60%, #fdf0f4 100%);
+        background:
+            radial-gradient(1100px circle at 8% -8%, rgba(56, 189, 248, 0.30), transparent 55%),
+            radial-gradient(950px circle at 95% 0%, rgba(167, 139, 250, 0.28), transparent 55%),
+            radial-gradient(900px circle at 40% 105%, rgba(244, 114, 182, 0.22), transparent 55%),
+            linear-gradient(160deg, #eef6ff 0%, #f0eefd 45%, #fdf0f6 100%);
     }
 
     .block-container { padding-top: 3.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
@@ -152,7 +157,7 @@ st.markdown(
     /* Restyle Streamlit's native tabs as rounded pill buttons */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
-        background: linear-gradient(90deg, #e3e8fb, #ede4f7);
+        background: linear-gradient(90deg, #c7d2fe, #fbcfe8);
         padding: 4px;
         border-radius: 999px;
         width: fit-content;
@@ -183,15 +188,15 @@ st.markdown(
     div[data-testid="stButton"] button:hover,
     div[data-testid="stButton"] button:focus,
     div[data-testid="stButton"] button:focus:not(:active) {
-        background-color: #f4f6fb;
-        border-color: #0f766e;
-        color: #0f766e;
+        background-color: #f2f1fe;
+        border-color: #6366f1;
+        color: #6366f1;
         box-shadow: none;
     }
     div[data-testid="stButton"] button:active {
-        background-color: #eef2fc;
-        border-color: #0f766e;
-        color: #0f766e;
+        background-color: #e9e8fd;
+        border-color: #6366f1;
+        color: #6366f1;
         box-shadow: none;
     }
 
@@ -217,7 +222,7 @@ st.markdown(
        are guaranteed the same floor height regardless of anything else
        Streamlit does internally around them. */
     [class*="st-key-hero_current_card"], [class*="st-key-hero_status_card"] {
-        min-height: 250px;
+        min-height: 285px;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -450,11 +455,11 @@ with nav_left:
         f"""
         <div class="nav-bar">
             <div class="nav-left">
-                <div class="icon-badge" style="background: linear-gradient(135deg, #a7e8dd 0%, #c7d2fe 100%);">
-                    {icon_svg('eco', color='#0f766e', size=22)}
+                <div class="icon-badge" style="background: linear-gradient(135deg, #34d399 0%, #6366f1 100%); box-shadow: 0 3px 10px rgba(99,102,241,0.35);">
+                    {icon_svg('eco', color='#ffffff', size=22)}
                 </div>
                 <div>
-                    <div style="font-size:1.35rem; font-weight:800; line-height:1.1; background: linear-gradient(90deg, #0f766e, #6366f1); -webkit-background-clip: text; background-clip: text; color: transparent;">AQI Prediction</div>
+                    <div style="font-size:1.35rem; font-weight:800; line-height:1.1; background: linear-gradient(90deg, #0d9488, #7c3aed); -webkit-background-clip: text; background-clip: text; color: transparent;">AQI Prediction</div>
                     <div style="color:#6b7280; font-size:0.82rem;">AI-powered air quality intelligence</div>
                 </div>
             </div>
