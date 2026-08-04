@@ -34,6 +34,13 @@ ICONS = {
     "science": '<path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/>',
     "cloud": '<path d="M7 18a4 4 0 1 1 .7-7.9A5 5 0 0 1 17 11a3.5 3.5 0 0 1-.5 7H7z"/>',
     "check_circle": '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+    # Weather-style condition glyphs, used for the big AQI-category icon
+    # next to the gauge — the kind of visual shorthand forecast apps use
+    # instead of just a number.
+    "sun": '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+    "cloud_sun": '<circle cx="8" cy="8" r="3"/><path d="M8 2.5v1.5M8 12v1.5M2.5 8H4M12 8h1.5M3.9 3.9l1 1M12.1 3.9l-1 1"/><path d="M8 15.5a4 4 0 1 1 .7-7.9A5 5 0 0 1 18 10a3.5 3.5 0 0 1-.5 5.5H8z"/>',
+    "haze": '<path d="M3 8h13a3 3 0 1 0-2.8-4"/><path d="M3 12h18"/><path d="M3 16h13a3 3 0 1 1-2.8 4"/>',
+    "smog": '<path d="M2 7h11a2.5 2.5 0 1 0-2.3-3.5"/><path d="M2 12h18a2.5 2.5 0 1 1-2.3 3.5"/><path d="M2 17h13"/>',
 }
 
 
@@ -57,8 +64,9 @@ st.markdown(
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    /* Page background: soft slate tint instead of stark white */
-    .stApp { background-color: #eef1f6; }
+    /* Page background: soft indigo-tinted gradient instead of a flat tint,
+       closer to what forecast apps typically use for depth */
+    .stApp { background: linear-gradient(180deg, #eef2fb 0%, #e9edf7 45%, #eef1f6 100%); }
 
     .block-container { padding-top: 3.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
 
@@ -84,11 +92,24 @@ st.markdown(
     }
 
     .inner-stat {
-        background-color: #e7edfb;
+        background-color: #eef2fc;
         border-radius: 12px;
         padding: 0.55rem 0.8rem;
         margin-bottom: 0.9rem;
     }
+
+    /* Slim ratio bar under a pollutant stat card, showing % of its rough
+       unhealthy threshold — the kind of at-a-glance visual forecast apps
+       use instead of making you read raw numbers against a table. */
+    .ratio-track {
+        width: 100%;
+        height: 5px;
+        border-radius: 999px;
+        background-color: #eef0f3;
+        margin-top: 0.55rem;
+        overflow: hidden;
+    }
+    .ratio-fill { height: 100%; border-radius: 999px; }
 
     .stat-label { color: #6b7280; font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 4px; }
     .stat-value { font-size: 1.4rem; font-weight: 700; color: #1a1f29; }
@@ -154,28 +175,19 @@ st.markdown(
        health-guidance box) sit flush against the card's own edge. */
     div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.6rem; }
 
-    /* Equal-height hero cards, scoped ONLY to the two-card row above (via
-       the explicit key= given to each st.container, which Streamlit turns
-       into an "st-key-..." class on that exact wrapper div). Scoping with
-       :has() means this never touches any other st.container on the page.
-       Within that scope only, every descendant div is forced to height:
-       100%, which is a blunt instrument but a reliable one: it doesn't
-       matter how many unlabeled wrapper divs Streamlit inserts between a
-       column and the bordered container inside it (that's what silently
-       broke the previous, narrower version of this rule and let the right
-       card's content spill past its own shorter border), because every
-       level in the chain now explicitly has height:100% rather than
-       relying on a couple of levels I guessed at. */
-    div[data-testid="stHorizontalBlock"]:has([class*="st-key-hero_current_card"]) {
-        align-items: stretch;
-    }
-    div[data-testid="stHorizontalBlock"]:has([class*="st-key-hero_current_card"]) > div[data-testid="column"] {
-        display: flex;
-    }
-    div[data-testid="stHorizontalBlock"]:has([class*="st-key-hero_current_card"]) > div[data-testid="column"] div {
-        height: 100%;
-    }
+    /* Equal-height hero cards. The previous approach tried to propagate
+       height:100% (then flex-grow) through every unlabeled wrapper div
+       Streamlit inserts between a column and the container inside it —
+       fragile, since it depends on guessing that internal structure
+       correctly, and evidently still didn't hold up. This is deliberately
+       simpler and doesn't depend on that structure at all: both cards
+       share one fixed min-height, applied directly to the wrapper that
+       key= is documented to tag with an "st-key-..." class. As long as
+       that one class lands (the documented, supported part), both cards
+       are guaranteed the same floor height regardless of anything else
+       Streamlit does internally around them. */
     [class*="st-key-hero_current_card"], [class*="st-key-hero_status_card"] {
+        min-height: 300px;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -228,6 +240,21 @@ def aqi_color_and_label(aqi):
         return "#7f1d1d", "Hazardous"
 
 
+def aqi_condition_icon(aqi):
+    """Maps AQI severity to a weather-style glyph (clear sky through thick
+    smog), the same visual shorthand forecast apps use next to a number so
+    the condition reads at a glance rather than requiring the reader to
+    interpret the number itself."""
+    if aqi <= 50:
+        return "sun"
+    elif aqi <= 100:
+        return "cloud_sun"
+    elif aqi <= 150:
+        return "haze"
+    else:
+        return "smog"
+
+
 FEATURE_LABELS = {
     "hour_sin": "Hour of Day (sin)",
     "hour_cos": "Hour of Day (cos)",
@@ -276,12 +303,16 @@ def badge_html(label, color):
     return f'<span class="badge" style="background-color:{color}1a; color:{color};">{label}</span>'
 
 
-def stat_card(label, value, unit="", sub=None, icon=None):
+def stat_card(label, value, unit="", sub=None, icon=None, ratio=None, ratio_color="#0f766e"):
     sub_html = f'<div class="stat-sub">{sub}</div>' if sub else ""
     icon_html = f'{icon_svg(icon, color="#6b7280", size=15)} ' if icon else ""
+    bar_html = ""
+    if ratio is not None:
+        pct = max(0, min(100, ratio * 100))
+        bar_html = f'<div class="ratio-track"><div class="ratio-fill" style="width:{pct:.0f}%; background-color:{ratio_color};"></div></div>'
     st.markdown(
         f"""<div class="card"><div class="stat-label">{icon_html}{label}</div>
-        <div class="stat-value">{value}{unit}</div>{sub_html}</div>""",
+        <div class="stat-value">{value}{unit}</div>{sub_html}{bar_html}</div>""",
         unsafe_allow_html=True,
     )
 
@@ -471,6 +502,16 @@ else:
     # --- Hero: two cards side by side ---
     top_left, top_right = st.columns([1, 1])
 
+    # Dynamic top accent bar for the hero cards, matching current severity —
+    # can't be static CSS since the color depends on the live AQI reading.
+    st.markdown(
+        f"""<style>
+        [class*="st-key-hero_current_card"] {{ border-top: 4px solid {current_color}; }}
+        [class*="st-key-hero_status_card"] {{ border-top: 4px solid {current_color}; }}
+        </style>""",
+        unsafe_allow_html=True,
+    )
+
     with top_left:
         with st.container(border=True, key="hero_current_card"):
             info_col, gauge_col = st.columns([1.1, 1])
@@ -489,6 +530,12 @@ else:
                     unsafe_allow_html=True,
                 )
             with gauge_col:
+                st.markdown(
+                    f"""<div style="display:flex; justify-content:flex-end; padding-right:0.4rem;">
+                    {icon_svg(aqi_condition_icon(current_aqi), color=current_color, size=34)}
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
                 gauge = go.Figure(
                     go.Indicator(
                         mode="gauge+number",
@@ -539,19 +586,22 @@ else:
 
     # --- Current pollutants ---
     st.markdown('<div class="section-title">Current Pollutants</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-caption">Live pollutant concentrations in {selected_name}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-caption">Live pollutant concentrations in {selected_name}, relative to their rough unhealthy threshold</div>', unsafe_allow_html=True)
     pollutants = [
-        ("PM2.5", row["pm2_5"], " µg/m³", 0, "blur_on"),
-        ("PM10", row["pm10"], " µg/m³", 0, "grain"),
-        ("O₃", row["o3"], " µg/m³", 1, "air"),
-        ("NO₂", row["no2"], " µg/m³", 1, "science"),
-        ("SO₂", row["so2"], " µg/m³", 1, "science"),
-        ("CO", row["co"], " µg/m³", 0, "cloud"),
+        ("PM2.5", row["pm2_5"], " µg/m³", 0, "blur_on", "pm2_5"),
+        ("PM10", row["pm10"], " µg/m³", 0, "grain", "pm10"),
+        ("O₃", row["o3"], " µg/m³", 1, "air", "o3"),
+        ("NO₂", row["no2"], " µg/m³", 1, "science", "no2"),
+        ("SO₂", row["so2"], " µg/m³", 1, "science", "so2"),
+        ("CO", row["co"], " µg/m³", 0, "cloud", "co"),
     ]
     pcols = st.columns(6)
-    for col, (label, value, unit, dp, icon) in zip(pcols, pollutants):
+    for col, (label, value, unit, dp, icon, threshold_key) in zip(pcols, pollutants):
         with col:
-            stat_card(label, f"{value:.{dp}f}", unit, icon=icon)
+            threshold, _ = POLLUTANT_THRESHOLDS[threshold_key]
+            ratio = value / threshold if threshold else 0
+            ratio_color = "#0f766e" if ratio < 0.6 else ("#b45309" if ratio < 1 else "#b91c1c")
+            stat_card(label, f"{value:.{dp}f}", unit, icon=icon, ratio=ratio, ratio_color=ratio_color)
 
     # --- 24h trend + current conditions ---
     trend_col, cond_col = st.columns([2, 1])
