@@ -81,6 +81,27 @@ st.markdown(
         border-radius: 16px !important;
     }
 
+    /* Stretch side-by-side columns (the hero cards) to equal height instead
+       of each shrinking to fit its own content */
+    div[data-testid="stHorizontalBlock"] {
+        align-items: stretch;
+    }
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        display: flex;
+    }
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] > div {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+    div[data-testid="stHorizontalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
+        flex: 1;
+        display: flex;
+    }
+    div[data-testid="stHorizontalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        flex: 1;
+    }
+
     div[data-testid="stSelectbox"] label { font-weight: 600; color: #1a1f29; }
 
     .nav-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.6rem; }
