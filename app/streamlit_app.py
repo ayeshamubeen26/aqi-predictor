@@ -64,9 +64,12 @@ st.markdown(
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    /* Page background: soft indigo-tinted gradient instead of a flat tint,
-       closer to what forecast apps typically use for depth */
-    .stApp { background: linear-gradient(180deg, #eef2fb 0%, #e9edf7 45%, #eef1f6 100%); }
+    /* Page background: a dawn-sky style gradient (sky blue → soft violet →
+       warm pink) instead of a flat/muted tint — a livelier base for the
+       whole page that still stays pale enough not to fight the cards. */
+    .stApp {
+        background: linear-gradient(160deg, #eaf4ff 0%, #eef1fd 30%, #f3edfb 60%, #fdf0f4 100%);
+    }
 
     .block-container { padding-top: 3.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
 
@@ -79,7 +82,7 @@ st.markdown(
         border-radius: 16px;
         padding: 1.1rem 1.3rem;
         margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.06);
+        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.07);
     }
 
     .group-card {
@@ -88,7 +91,7 @@ st.markdown(
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
         margin-bottom: 1.2rem;
-        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.06);
+        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.07);
     }
 
     .inner-stat {
@@ -149,7 +152,7 @@ st.markdown(
     /* Restyle Streamlit's native tabs as rounded pill buttons */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
-        background-color: #e9edf5;
+        background: linear-gradient(90deg, #e3e8fb, #ede4f7);
         padding: 4px;
         border-radius: 999px;
         width: fit-content;
@@ -200,7 +203,7 @@ st.markdown(
     /* Give bordered Streamlit containers (the hero cards) real breathing
        room at the bottom instead of letting the last element (the
        health-guidance box) sit flush against the card's own edge. */
-    div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.6rem; }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.35rem; }
 
     /* Equal-height hero cards. The previous approach tried to propagate
        height:100% (then flex-grow) through every unlabeled wrapper div
@@ -214,7 +217,7 @@ st.markdown(
        are guaranteed the same floor height regardless of anything else
        Streamlit does internally around them. */
     [class*="st-key-hero_current_card"], [class*="st-key-hero_status_card"] {
-        min-height: 300px;
+        min-height: 250px;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -447,11 +450,11 @@ with nav_left:
         f"""
         <div class="nav-bar">
             <div class="nav-left">
-                <div class="icon-badge" style="background-color:#d6e9e6;">
+                <div class="icon-badge" style="background: linear-gradient(135deg, #a7e8dd 0%, #c7d2fe 100%);">
                     {icon_svg('eco', color='#0f766e', size=22)}
                 </div>
                 <div>
-                    <div style="font-size:1.3rem; font-weight:800; color:#1a1f29; line-height:1.1;">AQI Prediction</div>
+                    <div style="font-size:1.35rem; font-weight:800; line-height:1.1; background: linear-gradient(90deg, #0f766e, #6366f1); -webkit-background-clip: text; background-clip: text; color: transparent;">AQI Prediction</div>
                     <div style="color:#6b7280; font-size:0.82rem;">AI-powered air quality intelligence</div>
                 </div>
             </div>
