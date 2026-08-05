@@ -207,8 +207,16 @@ st.markdown(
 
     /* Give bordered Streamlit containers (the hero cards) real breathing
        room at the bottom instead of letting the last element (the
-       health-guidance box) sit flush against the card's own edge. */
-    div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.35rem; }
+       health-guidance box) sit flush against the card's own edge. Also
+       force a solid white fill — without an explicit background-color
+       here, these containers show the page's gradient .stApp background
+       straight through them, which is why the hero cards and Safety
+       Precautions box were picking up the gradient instead of staying
+       white like the plain .card elements. */
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        padding-bottom: 0.35rem;
+        background-color: #ffffff !important;
+    }
 
     /* Equal-height hero cards. The previous approach tried to propagate
        height:100% (then flex-grow) through every unlabeled wrapper div
