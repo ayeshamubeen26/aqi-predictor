@@ -157,7 +157,7 @@ st.markdown(
     /* Restyle Streamlit's native tabs as rounded pill buttons */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
-        background: linear-gradient(90deg, #c7d2fe, #fbcfe8);
+        background-color: #f1f2f5;
         padding: 4px;
         border-radius: 999px;
         width: fit-content;
@@ -170,7 +170,13 @@ st.markdown(
     }
     .stTabs [aria-selected="true"] {
         background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.1);
+        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.15);
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab-border"] {
+        display: none;
     }
 
     /* Streamlit's default button ships with a white fill and a bright
@@ -184,20 +190,24 @@ st.markdown(
         color: #1a1f29;
         font-weight: 600;
         box-shadow: none;
+        outline: none;
     }
     div[data-testid="stButton"] button:hover,
     div[data-testid="stButton"] button:focus,
+    div[data-testid="stButton"] button:focus-visible,
     div[data-testid="stButton"] button:focus:not(:active) {
         background-color: #f2f1fe;
         border-color: #6366f1;
         color: #6366f1;
         box-shadow: none;
+        outline: none;
     }
     div[data-testid="stButton"] button:active {
         background-color: #e9e8fd;
         border-color: #6366f1;
         color: #6366f1;
         box-shadow: none;
+        outline: none;
     }
 
     /* Tighten Streamlit's default column/element vertical gaps inside cards
