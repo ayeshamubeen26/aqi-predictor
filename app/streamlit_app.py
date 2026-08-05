@@ -13,47 +13,6 @@ from explain import explain_prediction
 st.set_page_config(page_title="Pakistan AQI Forecast", page_icon="🌫️", layout="wide")
 
 # ---------------------------------------------------------------------------
-# Icon system: small inline SVGs instead of an external icon font. A webfont
-# ligature (e.g. "shield") that fails to load or render falls back to raw
-# text in the browser's default font/size, which is what produced the
-# oversized, wrongly-colored, overflowing glyph in the UI. Inline SVG has no
-# network dependency and always renders at the exact size/color requested.
-# ---------------------------------------------------------------------------
-ICONS = {
-    "shield": '<path d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3z"/>',
-    "eco": '<path d="M5 21c9 0 14-5 14-14V4h-3C7 4 3 9 3 15v6z"/><path d="M5 21c4-4 8-8 14-14"/>',
-    "location_on": '<path d="M12 21s7-6.6 7-12a7 7 0 1 0-14 0c0 5.4 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
-    "trending_down": '<path d="M4 7l7 7 4-4 5 5"/><path d="M15 15h5v-5"/>',
-    "trending_up": '<path d="M4 17l7-7 4 4 5-5"/><path d="M15 9h5v5"/>',
-    "trending_flat": '<path d="M4 12h16"/><path d="M15 8l4 4-4 4"/>',
-    "thermostat": '<path d="M12 14.5V5a2 2 0 1 0-4 0v9.5a4 4 0 1 0 4 0z"/>',
-    "water_drop": '<path d="M12 3s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11z"/>',
-    "air": '<path d="M4 8h11a2.5 2.5 0 1 0-2.5-2.5"/><path d="M4 12h14a2.5 2.5 0 1 1-2.5 2.5"/><path d="M4 16h8a2 2 0 1 1-2 2"/>',
-    "blur_on": '<circle cx="6" cy="6" r="1.4"/><circle cx="12" cy="6" r="1.4"/><circle cx="18" cy="6" r="1.4"/><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/><circle cx="6" cy="18" r="1.4"/><circle cx="12" cy="18" r="1.4"/><circle cx="18" cy="18" r="1.4"/>',
-    "grain": '<circle cx="7" cy="7" r="1.3"/><circle cx="17" cy="7" r="1.3"/><circle cx="7" cy="17" r="1.3"/><circle cx="17" cy="17" r="1.3"/><circle cx="12" cy="12" r="1.3"/>',
-    "science": '<path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.5L14 9V3"/>',
-    "cloud": '<path d="M7 18a4 4 0 1 1 .7-7.9A5 5 0 0 1 17 11a3.5 3.5 0 0 1-.5 7H7z"/>',
-    "check_circle": '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
-    # Weather-style condition glyphs, used for the big AQI-category icon
-    # next to the gauge — the kind of visual shorthand forecast apps use
-    # instead of just a number.
-    "sun": '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
-    "cloud_sun": '<circle cx="8" cy="8" r="3"/><path d="M8 2.5v1.5M8 12v1.5M2.5 8H4M12 8h1.5M3.9 3.9l1 1M12.1 3.9l-1 1"/><path d="M8 15.5a4 4 0 1 1 .7-7.9A5 5 0 0 1 18 10a3.5 3.5 0 0 1-.5 5.5H8z"/>',
-    "haze": '<path d="M3 8h13a3 3 0 1 0-2.8-4"/><path d="M3 12h18"/><path d="M3 16h13a3 3 0 1 1-2.8 4"/>',
-    "smog": '<path d="M2 7h11a2.5 2.5 0 1 0-2.3-3.5"/><path d="M2 12h18a2.5 2.5 0 1 1-2.3 3.5"/><path d="M2 17h13"/>',
-}
-
-
-def icon_svg(name, color="currentColor", size=20, stroke_width=2):
-    inner = ICONS.get(name, "")
-    return (
-        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
-        f'stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" '
-        f'stroke-linejoin="round" style="vertical-align:middle;flex-shrink:0;">{inner}</svg>'
-    )
-
-
-# ---------------------------------------------------------------------------
 # Styling: light, card-based theme with soft shadows instead of borders,
 # closer to a hand-built product dashboard than Streamlit's plain default.
 # ---------------------------------------------------------------------------
@@ -61,20 +20,16 @@ st.markdown(
     """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined');
+
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-size: 20px;
+        vertical-align: middle;
+        color: #6b7280;
+    }
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-
-    /* Page background: layered color "glow" blobs (sky blue, violet, pink)
-       over a light gradient base — more of an actual aurora-style backdrop
-       than a flat tint, for real vibrancy rather than a subtle wash. Cards
-       stay solid white on top so none of this fights legibility. */
-    .stApp {
-        background:
-            radial-gradient(1100px circle at 8% -8%, rgba(56, 189, 248, 0.30), transparent 55%),
-            radial-gradient(950px circle at 95% 0%, rgba(167, 139, 250, 0.28), transparent 55%),
-            radial-gradient(900px circle at 40% 105%, rgba(244, 114, 182, 0.22), transparent 55%),
-            linear-gradient(160deg, #eef6ff 0%, #f0eefd 45%, #fdf0f6 100%);
-    }
 
     .block-container { padding-top: 3.5rem; padding-bottom: 3rem; padding-left: 2.5rem; padding-right: 2.5rem; max-width: 100%; }
 
@@ -82,44 +37,31 @@ st.markdown(
     .hero-subtitle { color: #6b7280; font-size: 0.95rem; margin-bottom: 1.4rem; }
 
     .card {
-        background-color: #ffffff;
-        border: 1px solid #e4e8f0;
+        background-color: #ffffff !important;
+        border: 2px solid #d5dbe1;
         border-radius: 16px;
         padding: 1.1rem 1.3rem;
         margin-bottom: 1rem;
-        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.07);
+        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
     }
 
     .group-card {
-        background-color: #ffffff;
-        border: 1px solid #e4e8f0;
+        background-color: #ffffff !important;
+        border: 1px solid #eef0f3;
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
         margin-bottom: 1.2rem;
-        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.07);
+        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
     }
 
     .inner-stat {
-        background-color: #eef2fc;
+        background-color: #ffffff !important;
+        border: 2px solid #e2e6eb;
         border-radius: 12px;
-        padding: 0.55rem 0.8rem;
-        margin-bottom: 0.9rem;
+        padding: 0.9rem 1.1rem;
     }
 
-    /* Slim ratio bar under a pollutant stat card, showing % of its rough
-       unhealthy threshold — the kind of at-a-glance visual forecast apps
-       use instead of making you read raw numbers against a table. */
-    .ratio-track {
-        width: 100%;
-        height: 5px;
-        border-radius: 999px;
-        background-color: #eef0f3;
-        margin-top: 0.55rem;
-        overflow: hidden;
-    }
-    .ratio-fill { height: 100%; border-radius: 999px; }
-
-    .stat-label { color: #6b7280; font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 4px; }
+    .stat-label { color: #6b7280; font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
     .stat-value { font-size: 1.4rem; font-weight: 700; color: #1a1f29; }
     .stat-sub { color: #9aa4b2; font-size: 0.8rem; margin-top: 0.15rem; }
 
@@ -127,12 +69,17 @@ st.markdown(
     .section-caption { color: #6b7280; font-size: 0.85rem; margin-bottom: 0.8rem; }
 
     .badge {
-        display: inline-flex;
-        align-items: center;
+        display: inline-block;
         padding: 2px 11px;
         border-radius: 999px;
         font-size: 0.72rem;
         font-weight: 700;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        border: 2px solid #d5dbe1 !important;
+        border-radius: 16px !important;
+        background-color: #ffffff !important;
     }
 
     div[data-testid="stSelectbox"] label { font-weight: 600; color: #1a1f29; }
@@ -147,8 +94,8 @@ st.markdown(
     .nav-meta { color: #6b7280; font-size: 0.82rem; display: flex; align-items: center; gap: 1.1rem; }
 
     .eyebrow { color: #6b7280; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-bottom: 0.3rem; }
-    .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; margin-top: 0.35rem; }
-    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0.3rem; }
+    .hero-card-title { font-size: 1.5rem; font-weight: 800; color: #1a1f29; margin-bottom: 0.1rem; }
+    .hero-card-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 0; }
     .delta-pill {
         display: inline-flex; align-items: center; gap: 3px;
         padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
@@ -157,7 +104,7 @@ st.markdown(
     /* Restyle Streamlit's native tabs as rounded pill buttons */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
-        background: linear-gradient(90deg, #c7d2fe, #fbcfe8);
+        background-color: #f1f2f5;
         padding: 4px;
         border-radius: 999px;
         width: fit-content;
@@ -170,63 +117,7 @@ st.markdown(
     }
     .stTabs [aria-selected="true"] {
         background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.1);
-    }
-
-    /* Streamlit's default button ships with a white fill and a bright
-       red hover/focus/active outline (its default "primary" accent),
-       which clashes with this palette and reads as a stray highlight
-       against everything else here. Restyle it to sit flush with the
-       rest of the UI in every state — no red flash, no focus glow. */
-    div[data-testid="stButton"] button {
-        background-color: #ffffff;
-        border: 1px solid #d7dce5;
-        color: #1a1f29;
-        font-weight: 600;
-        box-shadow: none;
-    }
-    div[data-testid="stButton"] button:hover,
-    div[data-testid="stButton"] button:focus,
-    div[data-testid="stButton"] button:focus:not(:active) {
-        background-color: #f2f1fe;
-        border-color: #6366f1;
-        color: #6366f1;
-        box-shadow: none;
-    }
-    div[data-testid="stButton"] button:active {
-        background-color: #e9e8fd;
-        border-color: #6366f1;
-        color: #6366f1;
-        box-shadow: none;
-    }
-
-    /* Tighten Streamlit's default column/element vertical gaps inside cards
-       so icon rows and titles sit close together instead of leaving a
-       visible band of empty space. */
-    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] { gap: 0.35rem; }
-
-    /* Give bordered Streamlit containers (the hero cards) real breathing
-       room at the bottom instead of letting the last element (the
-       health-guidance box) sit flush against the card's own edge. */
-    div[data-testid="stVerticalBlockBorderWrapper"] > div { padding-bottom: 0.35rem; }
-
-    /* Equal-height hero cards. The previous approach tried to propagate
-       height:100% (then flex-grow) through every unlabeled wrapper div
-       Streamlit inserts between a column and the container inside it —
-       fragile, since it depends on guessing that internal structure
-       correctly, and evidently still didn't hold up. This is deliberately
-       simpler and doesn't depend on that structure at all: both cards
-       share one fixed min-height, applied directly to the wrapper that
-       key= is documented to tag with an "st-key-..." class. As long as
-       that one class lands (the documented, supported part), both cards
-       are guaranteed the same floor height regardless of anything else
-       Streamlit does internally around them. */
-    [class*="st-key-hero_current_card"], [class*="st-key-hero_status_card"] {
-        min-height: 285px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1);
     }
     </style>
     """,
@@ -262,7 +153,7 @@ def primary_pollutant_driver(row):
 
 def aqi_color_and_label(aqi):
     if aqi <= 50:
-        return "#0f766e", "Good"
+        return "#15803d", "Good"
     elif aqi <= 100:
         return "#b45309", "Moderate"
     elif aqi <= 150:
@@ -270,24 +161,9 @@ def aqi_color_and_label(aqi):
     elif aqi <= 200:
         return "#b91c1c", "Unhealthy"
     elif aqi <= 300:
-        return "#6d28d9", "Very Unhealthy"
+        return "#7e22ce", "Very Unhealthy"
     else:
         return "#7f1d1d", "Hazardous"
-
-
-def aqi_condition_icon(aqi):
-    """Maps AQI severity to a weather-style glyph (clear sky through thick
-    smog), the same visual shorthand forecast apps use next to a number so
-    the condition reads at a glance rather than requiring the reader to
-    interpret the number itself."""
-    if aqi <= 50:
-        return "sun"
-    elif aqi <= 100:
-        return "cloud_sun"
-    elif aqi <= 150:
-        return "haze"
-    else:
-        return "smog"
 
 
 FEATURE_LABELS = {
@@ -338,16 +214,12 @@ def badge_html(label, color):
     return f'<span class="badge" style="background-color:{color}1a; color:{color};">{label}</span>'
 
 
-def stat_card(label, value, unit="", sub=None, icon=None, ratio=None, ratio_color="#0f766e"):
+def stat_card(label, value, unit="", sub=None, icon=None):
     sub_html = f'<div class="stat-sub">{sub}</div>' if sub else ""
-    icon_html = f'{icon_svg(icon, color="#6b7280", size=15)} ' if icon else ""
-    bar_html = ""
-    if ratio is not None:
-        pct = max(0, min(100, ratio * 100))
-        bar_html = f'<div class="ratio-track"><div class="ratio-fill" style="width:{pct:.0f}%; background-color:{ratio_color};"></div></div>'
+    icon_html = f'<span class="material-symbols-outlined">{icon}</span> ' if icon else ""
     st.markdown(
         f"""<div class="card"><div class="stat-label">{icon_html}{label}</div>
-        <div class="stat-value">{value}{unit}</div>{sub_html}{bar_html}</div>""",
+        <div class="stat-value">{value}{unit}</div>{sub_html}</div>""",
         unsafe_allow_html=True,
     )
 
@@ -360,8 +232,8 @@ def styled_plotly(fig, height=380):
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", color="#1a1f29"),
         margin=dict(l=10, r=10, t=45, b=10),
-        xaxis=dict(gridcolor="#e4e8f0", zerolinecolor="#e4e8f0"),
-        yaxis=dict(gridcolor="#e4e8f0", zerolinecolor="#e4e8f0"),
+        xaxis=dict(gridcolor="#eef0f3", zerolinecolor="#eef0f3"),
+        yaxis=dict(gridcolor="#eef0f3", zerolinecolor="#eef0f3"),
     )
     return fig
 
@@ -443,6 +315,32 @@ def load_model_registry():
     return get_model_registry()
 
 
+@st.cache_data(ttl=900, show_spinner=False)
+def get_national_overview(_fs, _mr, cities):
+    """
+    Pulls current AQI for every monitored city in one pass, for the
+    national comparison view. Cached for 15 minutes (Streamlit reruns
+    the whole script on every interaction, so without caching, simply
+    switching the city dropdown would trigger a fresh live fetch across
+    all five cities every single time, five times the API load for no
+    reason since national conditions don't meaningfully change minute
+    to minute).
+    """
+    overview = []
+    for city in cities:
+        try:
+            result = predict_city_with_features(_fs, _mr, city)
+            if result is None:
+                continue
+            forecast, _, _ = result
+            aqi = forecast["current_aqi"]
+            color, label = aqi_color_and_label(aqi)
+            overview.append({"name": city["name"], "aqi": aqi, "color": color, "label": label})
+        except Exception:
+            continue
+    return overview
+
+
 fs = load_feature_store()
 mr = load_model_registry()
 
@@ -452,14 +350,14 @@ city_names = [c["name"] for c in cities]
 nav_left, nav_right = st.columns([2, 1.6])
 with nav_left:
     st.markdown(
-        f"""
+        """
         <div class="nav-bar">
             <div class="nav-left">
-                <div class="icon-badge" style="background: linear-gradient(135deg, #34d399 0%, #6366f1 100%); box-shadow: 0 3px 10px rgba(99,102,241,0.35);">
-                    {icon_svg('eco', color='#ffffff', size=22)}
+                <div class="icon-badge" style="background-color:#dcfce7;">
+                    <span class="material-symbols-outlined" style="color:#16a34a; font-size:24px;">eco</span>
                 </div>
                 <div>
-                    <div style="font-size:1.35rem; font-weight:800; line-height:1.1; background: linear-gradient(90deg, #0d9488, #7c3aed); -webkit-background-clip: text; background-clip: text; color: transparent;">AQI Prediction</div>
+                    <div style="font-size:1.3rem; font-weight:800; color:#1a1f29; line-height:1.1;">AQI Prediction</div>
                     <div style="color:#6b7280; font-size:0.82rem;">AI-powered air quality intelligence</div>
                 </div>
             </div>
@@ -502,65 +400,33 @@ else:
     prev_aqi = history_df["aqi"].iloc[-1] if len(history_df) else current_aqi
     delta = current_aqi - prev_aqi
     if delta < 0:
-        delta_color, delta_icon, delta_text = "#0f766e", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
+        delta_color, delta_icon, delta_text = "#15803d", "trending_down", f"{abs(delta):.0f} points · Improving vs previous reading"
     elif delta > 0:
         delta_color, delta_icon, delta_text = "#b91c1c", "trending_up", f"{abs(delta):.0f} points · Worsening vs previous reading"
     else:
         delta_color, delta_icon, delta_text = "#6b7280", "trending_flat", "No change vs previous reading"
 
-    # Computed early (rather than down by Safety Precautions, where this
-    # used to live) so the hero cards can also draw on the same driver /
-    # outlook context instead of just showing bare numbers.
-    driver_label, driver_value = primary_pollutant_driver(row)
-    worst_horizon = max(HORIZONS, key=lambda h: forecast[h])
-    worst_value = forecast[worst_horizon]
-    worst_color, worst_label = aqi_color_and_label(worst_value)
-    worst_horizon_display = {"target_aqi_24h": "24 hours", "target_aqi_48h": "48 hours", "target_aqi_72h": "72 hours"}[worst_horizon]
-    who_pm25_guideline = 15  # WHO annual air quality guideline for PM2.5, µg/m³
-    pm25_ratio = row["pm2_5"] / who_pm25_guideline if who_pm25_guideline else 0
-
     # --- Hero: two cards side by side ---
     top_left, top_right = st.columns([1, 1])
 
-    # Dynamic top accent bar for the hero cards, matching current severity —
-    # can't be static CSS since the color depends on the live AQI reading.
-    st.markdown(
-        f"""<style>
-        [class*="st-key-hero_current_card"] {{ border-top: 4px solid {current_color}; }}
-        [class*="st-key-hero_status_card"] {{ border-top: 4px solid {current_color}; }}
-        </style>""",
-        unsafe_allow_html=True,
-    )
-
     with top_left:
-        with st.container(border=True, key="hero_current_card"):
+        with st.container(border=True):
             info_col, gauge_col = st.columns([1.1, 1])
             with info_col:
-                hist_min, hist_max = history_df["aqi"].min(), history_df["aqi"].max()
                 st.markdown(
-                    f"""<div class="eyebrow">{icon_svg('location_on', size=15)} {selected_name.upper()}</div>
+                    f"""<div class="eyebrow"><span class="material-symbols-outlined" style="font-size:15px;">location_on</span> {selected_name.upper()}</div>
                     <div class="hero-card-title">Current Air Quality</div>
                     <div class="hero-card-sub">{current_label}</div>
                     <div class="delta-pill" style="background-color:{delta_color}1a; color:{delta_color};">
-                        {icon_svg(delta_icon, color=delta_color, size=15)}
+                        <span class="material-symbols-outlined" style="font-size:15px; color:{delta_color};">{delta_icon}</span>
                         {delta_text}
                     </div>
                     <div style="color:#9aa4b2; font-size:0.8rem; margin-top:0.8rem;">
                         Updated at hour {datetime.now().strftime("%H:00")}
-                    </div>
-                    <div style="color:#4b5563; font-size:0.82rem; line-height:1.5; margin-top:0.7rem;">
-                        {driver_label + " is the main contributor right now, at " + f"{driver_value:.1f} µg/m³, " if driver_label else ""}roughly {pm25_ratio:.1f}× the WHO annual guideline for PM2.5 (15 µg/m³).<br>
-                        AQI has ranged from {hist_min:.0f} to {hist_max:.0f} over the past 24 hours.
                     </div>""",
                     unsafe_allow_html=True,
                 )
             with gauge_col:
-                st.markdown(
-                    f"""<div style="display:flex; justify-content:flex-end; padding-right:0.4rem;">
-                    {icon_svg(aqi_condition_icon(current_aqi), color=current_color, size=34)}
-                    </div>""",
-                    unsafe_allow_html=True,
-                )
                 gauge = go.Figure(
                     go.Indicator(
                         mode="gauge+number",
@@ -572,11 +438,11 @@ else:
                             "bgcolor": "white",
                             "borderwidth": 0,
                             "steps": [
-                                {"range": [0, 50], "color": "rgba(15,118,110,0.13)"},
+                                {"range": [0, 50], "color": "rgba(21,128,61,0.13)"},
                                 {"range": [50, 100], "color": "rgba(180,83,9,0.13)"},
                                 {"range": [100, 150], "color": "rgba(194,65,12,0.13)"},
                                 {"range": [150, 200], "color": "rgba(185,28,28,0.13)"},
-                                {"range": [200, 300], "color": "rgba(109,40,217,0.13)"},
+                                {"range": [200, 300], "color": "rgba(126,34,206,0.13)"},
                             ],
                         },
                     )
@@ -584,11 +450,11 @@ else:
                 st.plotly_chart(styled_plotly(gauge, height=180), use_container_width=True, config={"displayModeBar": False})
 
     with top_right:
-        with st.container(border=True, key="hero_status_card"):
+        with st.container(border=True):
             badge_col, spacer, pill_col = st.columns([1, 2, 2])
             with badge_col:
                 st.markdown(
-                    f'<div class="icon-badge" style="background-color:{current_color}1a;">{icon_svg("shield", color=current_color, size=22)}</div>',
+                    f'<div class="icon-badge" style="background-color:{current_color}1a;"><span class="material-symbols-outlined" style="color:{current_color}; font-size:22px;">shield</span></div>',
                     unsafe_allow_html=True,
                 )
             with pill_col:
@@ -597,13 +463,9 @@ else:
                     unsafe_allow_html=True,
                 )
             st.markdown(
-                f"""<div class="hero-card-title">{headline}</div>
+                f"""<div class="hero-card-title" style="margin-top:0.8rem;">{headline}</div>
                 <div class="hero-card-sub">{headline_desc}</div>
-                <div style="color:#4b5563; font-size:0.82rem; line-height:1.5; margin-top:0.4rem; margin-bottom:0.6rem;">
-                    Forecast to reach <b style="color:{worst_color};">{worst_label}</b> within the next {worst_horizon_display}.<br>
-                    {"This would mark a shift from today's conditions." if worst_label != current_label else "This stays consistent with today's conditions."}
-                </div>
-                <div class="inner-stat" style="line-height:1.5; font-size:0.88rem; color:#374151;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
+                <div class="inner-stat" style="line-height:1.4; font-size:0.85rem; color:#374151; margin-top:0; padding:0.6rem 0.85rem;"><b>Health guidance:</b> {health_guidance(current_aqi)}</div>""",
                 unsafe_allow_html=True,
             )
             max_forecast = max(forecast[h] for h in HORIZONS)
@@ -615,22 +477,19 @@ else:
 
     # --- Current pollutants ---
     st.markdown('<div class="section-title">Current Pollutants</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-caption">Live pollutant concentrations in {selected_name}, relative to their rough unhealthy threshold</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-caption">Live pollutant concentrations in {selected_name}</div>', unsafe_allow_html=True)
     pollutants = [
-        ("PM2.5", row["pm2_5"], " µg/m³", 0, "blur_on", "pm2_5"),
-        ("PM10", row["pm10"], " µg/m³", 0, "grain", "pm10"),
-        ("O₃", row["o3"], " µg/m³", 1, "air", "o3"),
-        ("NO₂", row["no2"], " µg/m³", 1, "science", "no2"),
-        ("SO₂", row["so2"], " µg/m³", 1, "science", "so2"),
-        ("CO", row["co"], " µg/m³", 0, "cloud", "co"),
+        ("PM2.5", row["pm2_5"], " µg/m³", 0, "blur_on"),
+        ("PM10", row["pm10"], " µg/m³", 0, "grain"),
+        ("O₃", row["o3"], " µg/m³", 1, "air"),
+        ("NO₂", row["no2"], " µg/m³", 1, "science"),
+        ("SO₂", row["so2"], " µg/m³", 1, "science"),
+        ("CO", row["co"], " µg/m³", 0, "cloud"),
     ]
     pcols = st.columns(6)
-    for col, (label, value, unit, dp, icon, threshold_key) in zip(pcols, pollutants):
+    for col, (label, value, unit, dp, icon) in zip(pcols, pollutants):
         with col:
-            threshold, _ = POLLUTANT_THRESHOLDS[threshold_key]
-            ratio = value / threshold if threshold else 0
-            ratio_color = "#0f766e" if ratio < 0.6 else ("#b45309" if ratio < 1 else "#b91c1c")
-            stat_card(label, f"{value:.{dp}f}", unit, icon=icon, ratio=ratio, ratio_color=ratio_color)
+            stat_card(label, f"{value:.{dp}f}", unit, icon=icon)
 
     # --- 24h trend + current conditions ---
     trend_col, cond_col = st.columns([2, 1])
@@ -687,31 +546,6 @@ else:
                 unsafe_allow_html=True,
             )
 
-    # --- Safety precautions, keyed to the worst predicted conditions ahead
-    #     (worst_horizon / driver_label etc. were already computed above,
-    #     alongside the hero cards, so they're reused here rather than
-    #     recomputed) ---
-    st.markdown('<div class="section-title">Safety Precautions</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="section-caption">Based on the worst air quality expected in {selected_name} over the next 3 days '
-        f'({worst_label}, predicted around {worst_horizon_display} from now).</div>',
-        unsafe_allow_html=True,
-    )
-    with st.container(border=True):
-        if driver_label:
-            st.markdown(
-                f'<div style="font-size:0.85rem; color:#6b7280; margin-bottom:0.8rem;">'
-                f'<b>{driver_label}</b> is the main pollutant of concern right now ({driver_value:.1f} µg/m³).</div>',
-                unsafe_allow_html=True,
-            )
-        for tip in safety_precautions(worst_value):
-            st.markdown(
-                f'<div style="display:flex; align-items:flex-start; gap:0.6rem; margin-bottom:0.6rem;">'
-                f'{icon_svg("check_circle", color=worst_color, size=19)}'
-                f'<span style="font-size:0.9rem; color:#374151; line-height:1.4;">{tip}</span></div>',
-                unsafe_allow_html=True,
-            )
-
     # --- Forecast trend chart ---
     st.markdown('<div class="section-title">Predicted AQI Trend</div>', unsafe_allow_html=True)
     horizon_labels = ["Now", "24h", "48h", "72h"]
@@ -719,8 +553,8 @@ else:
     trend2 = go.Figure(
         go.Scatter(
             x=horizon_labels, y=horizon_values, mode="lines+markers",
-            line=dict(width=3, color="#2563eb"), marker=dict(size=9, color="#2563eb"),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
+            line=dict(width=3, color="#0d9488"), marker=dict(size=9, color="#0d9488"),
+            fill="tozeroy", fillcolor="rgba(13,148,136,0.08)",
         )
     )
     st.plotly_chart(styled_plotly(trend2, height=320), use_container_width=True, config={"displayModeBar": False})
@@ -799,7 +633,7 @@ else:
                         x=top_contributions.values,
                         y=readable_labels,
                         orientation="h",
-                        marker_color=["#b91c1c" if v > 0 else "#0f766e" for v in top_contributions.values],
+                        marker_color=["#b91c1c" if v > 0 else "#15803d" for v in top_contributions.values],
                     )
                 )
                 shap_fig.update_layout(
@@ -810,6 +644,33 @@ else:
                 st.plotly_chart(styled_plotly(shap_fig), use_container_width=True, key=f"shap_{horizon}", config={"displayModeBar": False})
                 st.caption("Red bars pushed the forecast higher, green bars pulled it lower.")
 
+    # --- Safety precautions, keyed to the worst predicted conditions ahead, not just the current moment ---
+    worst_horizon = max(HORIZONS, key=lambda h: forecast[h])
+    worst_value = forecast[worst_horizon]
+    worst_color, worst_label = aqi_color_and_label(worst_value)
+    worst_horizon_display = {"target_aqi_24h": "24 hours", "target_aqi_48h": "48 hours", "target_aqi_72h": "72 hours"}[worst_horizon]
+    driver_label, driver_value = primary_pollutant_driver(row)
+
+    st.markdown('<div class="section-title">Safety Precautions</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="section-caption">Based on the worst air quality expected in {selected_name} over the next 3 days '
+        f'({worst_label}, predicted around {worst_horizon_display} from now).</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+        if driver_label:
+            st.markdown(
+                f'<div style="font-size:0.85rem; color:#6b7280; margin-bottom:0.8rem;">'
+                f'<b>{driver_label}</b> is the main pollutant of concern right now ({driver_value:.1f} µg/m³).</div>',
+                unsafe_allow_html=True,
+            )
+        for tip in safety_precautions(worst_value):
+            st.markdown(
+                f'<div style="display:flex; align-items:flex-start; gap:0.6rem; margin-bottom:0.6rem;">'
+                f'<span class="material-symbols-outlined" style="color:{worst_color}; font-size:19px; margin-top:1px;">check_circle</span>'
+                f'<span style="font-size:0.9rem; color:#374151; line-height:1.4;">{tip}</span></div>',
+                unsafe_allow_html=True,
+            )
 
     # --- Forecast accuracy backtest: real predicted-vs-actual over recent history ---
     st.markdown('<div class="section-title">Forecast Accuracy Over Time</div>', unsafe_allow_html=True)
@@ -844,3 +705,37 @@ else:
         st.caption("Dotted orange shows what the model predicted 24 hours in advance for each point in time, plotted against the solid blue actual reading at that same time.")
     else:
         st.info("Not enough historical data yet to show a backtest for this city.")
+
+# --- National Overview: something a single-city dashboard can't offer, shown regardless of the selected city's own data availability ---
+st.markdown('<div class="section-title">National Overview</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-caption">Live AQI across all five monitored cities, ranked worst to best</div>', unsafe_allow_html=True)
+
+with st.container(border=True):
+    with st.spinner("Loading national comparison..."):
+        overview = get_national_overview(fs, mr, cities)
+
+    if overview:
+        overview_sorted = sorted(overview, key=lambda c: c["aqi"], reverse=True)
+        bar_colors = [
+            "#1a1f29" if c["name"] == selected_name else c["color"]
+            for c in overview_sorted
+        ]
+        overview_fig = go.Figure(
+            go.Bar(
+                x=[c["aqi"] for c in overview_sorted],
+                y=[c["name"] for c in overview_sorted],
+                orientation="h",
+                marker_color=bar_colors,
+                text=[f"{c['aqi']:.0f} · {c['label']}" for c in overview_sorted],
+                textposition="outside",
+            )
+        )
+        overview_fig.update_layout(
+            yaxis=dict(autorange="reversed"),
+            xaxis_title="Current AQI",
+            margin=dict(l=10, r=80, t=10, b=10),
+        )
+        st.plotly_chart(styled_plotly(overview_fig, height=260), use_container_width=True, config={"displayModeBar": False})
+        st.caption(f"{selected_name} is highlighted in black. Use the dropdown near the top of the page to explore a different city.")
+    else:
+        st.info("National comparison isn't available yet, not enough recent history for other cities.")
