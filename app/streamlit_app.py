@@ -223,16 +223,20 @@ st.markdown(
        here, these containers show the page's gradient .stApp background
        straight through them, which is why the hero cards and Safety
        Precautions box were picking up the gradient instead of staying
-       white like the plain .card elements. */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
+       white like the plain .card elements.
+
+       Three targeted attempts at specific nesting levels (the wrapper
+       itself, its direct child, the inner stVerticalBlock) didn't clear
+       it, so instead of guessing at one more specific level, this catches
+       every div at any depth inside the wrapper unconditionally. It
+       leaves span elements (the colored badges) and the Plotly charts
+       (rendered separately, not CSS-styled divs) untouched, so it's broad
+       without breaking anything else on the page. */
+    div[data-testid="stVerticalBlockBorderWrapper"] div {
         background-color: #ffffff !important;
     }
     div[data-testid="stVerticalBlockBorderWrapper"] > div {
         padding-bottom: 0.35rem;
-        background-color: #ffffff !important;
-    }
-    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] {
-        background-color: #ffffff !important;
     }
 
     /* Equal-height hero cards. The previous approach tried to propagate
