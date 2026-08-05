@@ -213,8 +213,14 @@ st.markdown(
        straight through them, which is why the hero cards and Safety
        Precautions box were picking up the gradient instead of staying
        white like the plain .card elements. */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #ffffff !important;
+    }
     div[data-testid="stVerticalBlockBorderWrapper"] > div {
         padding-bottom: 0.35rem;
+        background-color: #ffffff !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlock"] {
         background-color: #ffffff !important;
     }
 
