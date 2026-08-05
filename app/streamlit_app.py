@@ -154,29 +154,30 @@ st.markdown(
         padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
     }
 
-    /* Restyle Streamlit's native tabs as rounded pill buttons */
+    /* Plain flat tabs, no background box or pill on either the row or the
+       selected tab, just text weight/spacing plus BaseWeb's own default
+       underline to indicate the active tab. */
     .stTabs [data-baseweb="tab-list"] {
         gap: 4px;
-        background-color: #f1f2f5;
-        padding: 4px;
-        border-radius: 999px;
-        width: fit-content;
+        background: none !important;
+        background-color: transparent !important;
+        padding: 0;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 999px;
-        padding: 4px 18px;
+        padding: 4px 14px;
         font-weight: 600;
         font-size: 0.85rem;
+        background: none !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(30, 41, 59, 0.15);
+        background: none !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
     }
-    .stTabs [data-baseweb="tab-highlight"] {
-        background-color: transparent;
-    }
-    .stTabs [data-baseweb="tab-border"] {
-        display: none;
+    .stTabs [data-baseweb="tab-panel"] {
+        background: none !important;
     }
 
     /* Streamlit's default button ships with a white fill and a bright
