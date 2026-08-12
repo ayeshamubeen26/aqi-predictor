@@ -27,3 +27,9 @@ jobs:
           HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
           CITIES: ${{ secrets.CITIES }}
         run: python src/data_fetch.py
+
+      - name: Sync aqi_features_final with recent data
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+        run: python src/sync_final_features.py
