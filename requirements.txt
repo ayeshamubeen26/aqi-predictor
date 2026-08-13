@@ -1,6 +1,7 @@
 requests
 python-dotenv
 hopsworks
+confluent-kafka
 scikit-learn
 tensorflow==2.18.1
 shap
