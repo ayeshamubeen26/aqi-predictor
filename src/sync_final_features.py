@@ -65,7 +65,7 @@ def sync_final_features():
     )
 
     print(f"Syncing {len(df_final)} rows into aqi_features_final...")
-    final_fg.insert(df_final)
+    final_fg.insert(df_final, wait=True)
     print("Done.")
 
 

@@ -40,9 +40,18 @@ def insert_rows(rows):
     """
     Takes a list of feature dictionaries (like the ones engineer_features
     produces) and writes them into the Hopsworks feature group.
+
+    wait=True blocks until Hopsworks' background materialization job
+    actually finishes committing the write, rather than returning as
+    soon as the job is merely launched. Without this, insert() returns
+    almost immediately while the real write is still in progress, and
+    anything reading the table moments later (like sync_final_features.py,
+    which runs as the very next step in the same workflow) can find zero
+    rows even though the insert reported success, since the data hadn't
+    actually landed yet.
     """
     fs = get_feature_store()
     fg = get_or_create_feature_group(fs)
     df = pd.DataFrame(rows)
-    fg.insert(df)
+    fg.insert(df, wait=True)
     print(f"Inserted {len(df)} rows into aqi_features.")
