@@ -20,6 +20,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: DEBUG - check key length only
+        env:
+          OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
+        run: echo "Key length is ${#OPENWEATHER_KEY} characters (should be 32 for a normal OpenWeather key, with no extra spaces/newlines)"
+
       - name: Run feature pipeline
         env:
           OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
