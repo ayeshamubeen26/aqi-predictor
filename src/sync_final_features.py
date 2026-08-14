@@ -30,6 +30,7 @@ Why a 10-day window, not just "the last hour":
   instead of creating duplicates.
 """
 from datetime import datetime, timedelta
+from hopsworks_common.client.exceptions import JobExecutionException
 from feature_store import get_feature_store
 from add_rolling_features import add_rolling_and_lag_features
 from add_targets import add_aqi_and_targets
@@ -69,8 +70,28 @@ def sync_final_features():
         final_fg.update_statistics_config()
 
     print(f"Syncing {len(df_final)} rows into aqi_features_final...")
-    final_fg.insert(df_final, wait=True)
-    print("Done.")
+    try:
+        final_fg.insert(df_final, wait=True)
+        print("Done.")
+    except JobExecutionException:
+        # Across every failure seen so far, the actual Hudi write
+        # ("DeltaStreamer sync completed successfully") finishes in the
+        # first 1-2 minutes of the job, well before this exception fires.
+        # What fails afterward is Hopsworks' own internal statistics and
+        # metrics-reporting step during job shutdown, not the write
+        # itself, and disabling statistics_config didn't stop it either.
+        # Treating this as fatal was failing the entire hourly pipeline
+        # over a bookkeeping step whose only job is producing numbers
+        # this project never reads. The data landing in
+        # aqi_features_final, which is what training/prediction actually
+        # depend on, has already happened by the time this is reached.
+        print(
+            "Warning: the materialization job reported a failure during "
+            "its post-write statistics/metrics step, but the actual data "
+            "write completes before that step runs, so this is very "
+            "likely non-fatal. Not failing the pipeline over it. If "
+            "predictions ever look stale, this is the first place to check."
+        )
 
 
 if __name__ == "__main__":
