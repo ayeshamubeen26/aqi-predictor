@@ -25,6 +25,20 @@ def get_or_create_feature_group(fs):
     """
     Get the aqi_features feature group if it exists, or create it
     the first time this runs.
+
+    statistics_config disabled: Hopsworks normally recomputes summary
+    statistics (histograms, correlations, etc.) after every write, which
+    means a full-table scan every single insert. On this project's
+    free-tier cluster that step has been timing out and failing the
+    entire job even after the actual data write already succeeded, this
+    project doesn't use those auto-computed statistics for anything, so
+    there's no reason to pay that cost or risk that failure every hour.
+
+    The statistics_config passed to get_or_create_feature_group only
+    takes effect the first time a feature group is created, since this
+    group already exists from earlier runs, that argument alone would
+    be silently ignored. update_statistics_config() is what actually
+    changes it on a feature group that already exists.
     """
     fg = fs.get_or_create_feature_group(
         name="aqi_features",
@@ -32,8 +46,12 @@ def get_or_create_feature_group(fs):
         primary_key=["city", "timestamp"],
         description="Hourly weather and pollutant features for AQI forecasting across Pakistani cities",
         online_enabled=False,
-        time_travel_format="HUDI"
+        time_travel_format="HUDI",
+        statistics_config={"enabled": False}
     )
+    if fg.statistics_config.enabled:
+        fg.statistics_config = {"enabled": False}
+        fg.update_statistics_config()
     return fg
 
 def insert_rows(rows):

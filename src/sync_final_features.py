@@ -62,7 +62,11 @@ def sync_final_features():
         description="Final AQI features with computed AQI and 24/48/72h targets, ready for model training",
         online_enabled=False,
         time_travel_format="HUDI",
+        statistics_config={"enabled": False}
     )
+    if final_fg.statistics_config.enabled:
+        final_fg.statistics_config = {"enabled": False}
+        final_fg.update_statistics_config()
 
     print(f"Syncing {len(df_final)} rows into aqi_features_final...")
     final_fg.insert(df_final, wait=True)
