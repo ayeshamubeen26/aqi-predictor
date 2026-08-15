@@ -1,6 +1,7 @@
 import sys
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 import streamlit as st
 import pandas as pd
@@ -395,6 +396,19 @@ def styled_plotly(fig, height=380):
     return fig
 
 
+def pk_now():
+    """
+    Streamlit Cloud's servers run on UTC, not Pakistan time. datetime.now()
+    alone returns whatever the server's local time is, which showed as
+    hours behind for anyone actually in Pakistan (e.g. 12:03 PM server
+    time displaying while it was genuinely 5:03 PM PKT, exactly the 5-hour
+    UTC+5 offset). This forces the conversion explicitly instead of
+    depending on the server's local timezone, which we don't control and
+    shouldn't assume matches the audience viewing the app.
+    """
+    return datetime.now(ZoneInfo("Asia/Karachi"))
+
+
 def health_guidance(aqi):
     if aqi <= 50:
         return "Air quality is good. No precautions needed for outdoor activity."
@@ -503,7 +517,7 @@ with nav_right:
     with ctrl_col2:
         refresh_clicked = st.button("↻ Refresh", use_container_width=True)
     st.markdown(
-        f'<div class="nav-meta" style="justify-content:flex-end; margin-top:0.3rem;">Updated {datetime.now().strftime("%I:%M %p")}</div>',
+        f'<div class="nav-meta" style="justify-content:flex-end; margin-top:0.3rem;">Updated {pk_now().strftime("%I:%M %p")}</div>',
         unsafe_allow_html=True,
     )
 
@@ -575,7 +589,7 @@ else:
                         {delta_text}
                     </div>
                     <div style="color:#9aa4b2; font-size:0.8rem; margin-top:0.8rem;">
-                        Updated at hour {datetime.now().strftime("%H:00")}
+                        Updated at hour {pk_now().strftime("%H:00")}
                     </div>
                     <div style="color:#4b5563; font-size:0.82rem; line-height:1.5; margin-top:0.7rem;">
                         {driver_label + " is the main contributor right now, at " + f"{driver_value:.1f} µg/m³, " if driver_label else ""}roughly {pm25_ratio:.1f}× the WHO annual guideline for PM2.5 (15 µg/m³).<br>
