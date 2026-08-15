@@ -124,6 +124,10 @@ SHAP explanations show the driving features shift with horizon. At 24h, the curr
 
 See `notebooks/eda.ipynb` for the full analysis, run against the real backfilled dataset. Covers AQI distribution and category breakdown per city, seasonal and daily trends, correlation between weather/pollutants and AQI, and the persistence-correlation analysis referenced above.
 
+## Debugging journal
+
+See `docs/DEBUGGING_JOURNAL.md` for a written account of four real production issues found and fixed after the pipeline was already live: a silently-failing API integration, a feature store table that stopped staying in sync after backfill, a Hopsworks infrastructure timeout that took reading raw Spark job logs to properly diagnose, and a timezone display bug. Each entry covers what looked wrong initially, what was checked, and what the actual root cause turned out to be, since the initial suspicion wasn't always right.
+
 ## Known limitations and possible next steps
 
 - The feature pipeline is configured to run hourly via cron (`0 * * * *`), and every run has completed successfully. In practice, GitHub Actions' scheduled workflows are not guaranteed to fire exactly on the hour, their documentation notes delays under high platform load, and observed gaps between runs have ranged from roughly 1.5 to 4 hours rather than a clean hourly cadence. This is a known limitation of GitHub's free-tier scheduler, not a bug in the pipeline itself.
