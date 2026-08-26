@@ -1,8 +1,8 @@
 name: Feature Pipeline
 
 on:
-  schedule:
-    - cron: '0 */3 * * *'  # every 3 hours instead of hourly, reduces Hopsworks compute usage on the free tier
+  #schedule:
+   # - cron: '0 */3 * * *'  # every 3 hours instead of hourly, reduces Hopsworks compute usage on the free tier
   workflow_dispatch:
 
 jobs:
