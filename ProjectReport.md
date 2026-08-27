@@ -188,7 +188,6 @@ artifact.
 - Forecast accuracy backtest: the 24h model's past predictions plotted
   against what AQI actually turned out to be, real evidence of
   tracking, not just a claimed RMSE number
-- National overview comparing all five cities at once
 - Safety precautions that scale to the worst predicted condition
   across the 3-day window, not just the current moment, and name the
   specific pollutant driving concern in that city
