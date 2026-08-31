@@ -1,8 +1,8 @@
 name: Train AQI Models
 
 on:
-  #schedule:
-    #- cron: '0 2 * * *'  # runs daily at 2am UTC
+  schedule:
+    - cron: '0 2 * * *'  # runs daily at 2am UTC
   push:
     branches:
       - main
